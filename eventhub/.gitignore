@@ -1,20 +1,47 @@
-# залежності
+# Залежності
 node_modules/
+jspm_packages/
 
-# результати збірки
+# Збірки та кеш
 dist/
 build/
-.turbo/
+.next/
+out/
+.cache/
+parcel-cache/
 
-# оточення — секрети НІКОЛИ не потрапляють у git
+# Змінні середовища та секретні дані (паролі, ключі API)
 .env
-.env.*
-!.env.example
+.env.local
+.env*.local
 
-# редактори й ОС
+# Системні файли ОС
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Налаштування середовищ розробки та редакторів
+.vscode/
 .idea/
 *.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-# тести
+# Логи та тимчасові файли
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Тести та покриття
 coverage/
+.nyc_output/
