@@ -1,0 +1,47 @@
+# Залежності
+node_modules/
+jspm_packages/
+
+# Збірки та кеш
+dist/
+build/
+.next/
+out/
+.cache/
+parcel-cache/
+
+# Змінні середовища та секретні дані (паролі, ключі API)
+.env
+.env.local
+.env*.local
+
+# Системні файли ОС
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Налаштування середовищ розробки та редакторів
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Логи та тимчасові файли
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Тести та покриття
+coverage/
+.nyc_output/
