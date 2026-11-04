@@ -2,7 +2,9 @@
 
 Навчальний проєкт курсу веб-технології та веб-дизайн: портал продажу квитків на події (EventHub).
 
-Це **стартовий стан тижня 1**. В роботі не вистачає частини каркаса — який ви створите самостійно виконуючи дану лабораторну роботу № 1.
+Це **стан після лабораторної роботи № 1**: каркас монорепо (pnpm workspaces +
+Turborepo), контракт API в OpenAPI 3.1, згенеровані з нього типи, мок-сервер
+Prism і типізований фронтенд, який працює без бекенду.
 
 ---
 
@@ -11,14 +13,18 @@
 ```
 eventhub/
 ├── apps/
-│   ├── web/               React 19 + TypeScript + Vite (порожня заготовка)
+│   ├── web/               React 19 + TypeScript + Vite, каталог подій
 │   └── api-gateway/       NestJS 11, єдиний ендпоїнт GET /health
 ├── packages/
-│   └── config/            спільні tsconfig і eslint
-└── docs/adr/              шаблон архітектурного рішення
+│   ├── config/            спільні tsconfig і eslint
+│   └── contracts/         openapi.yaml + згенеровані з нього типи
+├── docs/
+│   ├── adr/               архітектурні рішення (ADR-0001 — курсорна пагінація)
+│   └── labs/              методичні вказівки
+├── pnpm-workspace.yaml    пакети воркспейса, allowBuilds, engineStrict
+├── turbo.json             граф задач і кеш Turborepo
+└── package.json           кореневі скрипти
 ```
-
-### Також в стартовом наборі потрібно самостійно додати інші елементи для розробки проєкту
 
 | Файл / папка                                                     | Крок лабораторної |
 | ---------------------------------------------------------------- | ----------------- |
@@ -26,10 +32,12 @@ eventhub/
 | кореневий `package.json`                                         | крок 1            |
 | `turbo.json`                                                     | крок 1            |
 | `packages/contracts/` (OpenAPI + згенеровані типи)               | кроки 2–3         |
-| `apps/web/.env.example` та `.env.local`                          | крок 5            |
-| `docs/adr/0001-*.md`                                             | крок 6            |
+| `apps/web/src/api/client.ts`, `features/catalog/EventList.tsx`   | крок 5            |
+| `apps/web/.env.example`                                          | крок 5            |
+| `docs/adr/0001-cursor-pagination.md`                             | крок 6            |
 
-Поки цих файлів немає, `pnpm install` у корені **не спрацює** — це очікувано.
+> `packages/contracts/src/generated/` і `apps/web/.env.local` **не комітяться** —
+> їх кожен створює локально (див. «Запуск»).
 
 ---
 
@@ -94,7 +102,7 @@ node -v          # перевірте результат, а не відсутн
 
 ```bash
 corepack enable
-corepack prepare pnpm@latest --activate
+corepack prepare pnpm@11 --activate
 ```
 
 Windows: працюйте у WSL2 або Git Bash і одразу виконайте
@@ -102,23 +110,46 @@ Windows: працюйте у WSL2 або Git Bash і одразу виконай
 
 ---
 
-## Запуск (після виконання кроку 1 лабораторної)
+## Запуск
+
+Усі команди — **з кореня репозиторію**. З підпапки кореневі скрипти
+працюють лише як `pnpm -w <скрипт>`.
 
 ```bash
 pnpm install
+
+# адреса API для фронтенду (один раз після клонування;
+# .env.local не комітиться). Після створення — перезапустіть dev-сервер.
+cp apps/web/.env.example apps/web/.env.local
 
 # згенерувати типи зі специфікації
 # (обов'язково після кожної зміни openapi.yaml)
 pnpm contracts
 
-# мок-сервер із контракту   → http://localhost:4010
+# термінал 1: мок-сервер із контракту   → http://127.0.0.1:4010
 pnpm mock
 
-# фронтенд                  → http://localhost:5173
+# термінал 2: фронтенд                  → http://localhost:5173
 pnpm --filter web dev
 
-# бекенд                    → http://localhost:3000/health
+# (необов'язково) бекенд                → http://localhost:3000/health
 pnpm --filter api-gateway dev
+```
+
+Інші корисні команди:
+
+```bash
+pnpm build        # зібрати все (повторний запуск — FULL TURBO)
+pnpm typecheck    # перевірка типів у всіх пакетах
+```
+
+### Перевірка мок-сервера
+
+```bash
+curl -i "http://127.0.0.1:4010/events"                              # 200, дві події
+curl -H "Prefer: example=empty" "http://127.0.0.1:4010/events"      # порожній каталог
+curl -i "http://127.0.0.1:4010/events?limit=999"                    # 400, problem+json
+curl -G --data-urlencode "city=Вінниця" "http://127.0.0.1:4010/events"
 ```
 
 Фронтенд і бекенд запускаються **незалежно**. До тижня 2 `web` працює проти

@@ -8,7 +8,7 @@
  * у бандл, доступний у браузері.
  *
  * Лабораторна № 1, крок 5: створіть .env.example та .env.local
- * зі значенням VITE_API_URL=http://localhost:4010
+ * зі значенням VITE_API_URL=http://127.0.0.1:4010
  */
 interface ImportMetaEnv {
   readonly VITE_API_URL: string;
