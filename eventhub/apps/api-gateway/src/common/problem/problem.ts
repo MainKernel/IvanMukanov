@@ -1,15 +1,19 @@
 import { HttpException } from "@nestjs/common";
 import type { Problem } from "@eventhub/contracts";
 import {
+  EmailTaken,
   EventCancelledError,
   EventNotFound,
   FavoritesUnavailable,
   ForbiddenOrderAccess,
+  InvalidCredentials,
   InvalidCursor,
+  InvalidRefreshToken,
   OrderAlreadyCancelled,
   OrderNotFound,
   RequestValidationFailed,
   SeatAlreadyHeld,
+  Unauthenticated,
 } from "./domain-errors";
 
 export interface ProblemBody extends Problem {
@@ -95,6 +99,42 @@ export function toProblem(err: unknown): ProblemBody {
       type: "/errors/favorites-unavailable",
       title: "Не вдалося оновити обране",
       status: 503,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof EmailTaken) {
+    return {
+      type: "/errors/email-taken",
+      title: "Ця пошта вже зареєстрована",
+      status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof InvalidCredentials) {
+    return {
+      type: "/errors/invalid-credentials",
+      title: "Невірна пошта або пароль",
+      status: 401,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof Unauthenticated) {
+    return {
+      type: "/errors/unauthenticated",
+      title: "Потрібна автентифікація",
+      status: 401,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof InvalidRefreshToken) {
+    return {
+      type: "/errors/invalid-refresh-token",
+      title: "Сесія недійсна або завершена",
+      status: 401,
       detail: err.message,
     };
   }

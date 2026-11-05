@@ -72,3 +72,27 @@ export class FavoritesUnavailable extends DomainError {
     super("Сервіс обраного тимчасово недоступний. Спробуйте ще раз.");
   }
 }
+
+export class EmailTaken extends DomainError {
+  constructor() {
+    super("Спробуйте увійти або вкажіть іншу адресу електронної пошти");
+  }
+}
+
+export class InvalidCredentials extends DomainError {
+  constructor() {
+    super("Перевірте введену пошту та пароль");
+  }
+}
+
+export class Unauthenticated extends DomainError {
+  constructor() {
+    super("Надайте дійсний Bearer-токен у заголовку Authorization");
+  }
+}
+
+export class InvalidRefreshToken extends DomainError {
+  constructor() {
+    super("Увійдіть у систему заново");
+  }
+}

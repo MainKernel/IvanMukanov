@@ -1,31 +1,60 @@
 import { Injectable } from "@nestjs/common";
+import { OrderStatus as PrismaOrderStatus, type Order as PrismaOrder } from "@prisma/client";
 import type { Order } from "@eventhub/contracts";
+import { PrismaService } from "../prisma/prisma.service";
 
-const SEED_ORDERS: Order[] = [
-  {
-    id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55",
-    eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
-    buyerId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
-    quantity: 2,
-    total: { amount: 50000, currency: "UAH" },
-    status: "pending",
-    createdAt: "2026-10-01T12:00:00.000Z",
-  },
-];
+export interface CreateOrderData {
+  userId: string;
+  eventId: string;
+  quantity: number;
+  totalCents: number;
+  currency: "UAH";
+}
+
+function toOrder(row: PrismaOrder): Order {
+  return {
+    id: row.id,
+    userId: row.userId,
+    eventId: row.eventId,
+    buyerId: row.userId,
+    quantity: row.quantity,
+    total: {
+      amount: row.totalCents,
+      currency: row.currency.trim() as "UAH",
+    },
+    status: row.status === PrismaOrderStatus.CANCELLED ? "cancelled" : "pending",
+    createdAt: row.createdAt.toISOString(),
+  };
+}
 
 @Injectable()
 export class OrderRepository {
-  private readonly orders = new Map<string, Order>(
-    SEED_ORDERS.map((o) => [o.id, { ...o }]),
-  );
+  constructor(private readonly prisma: PrismaService) {}
 
-  async save(order: Order): Promise<Order> {
-    this.orders.set(order.id, order);
-    return order;
+  async create(data: CreateOrderData): Promise<Order> {
+    const row = await this.prisma.order.create({
+      data: {
+        userId: data.userId,
+        eventId: data.eventId,
+        quantity: data.quantity,
+        totalCents: data.totalCents,
+        currency: data.currency,
+        status: PrismaOrderStatus.PENDING,
+      },
+    });
+    return toOrder(row);
   }
 
   async byId(id: string): Promise<Order | undefined> {
-    return this.orders.get(id);
+    const row = await this.prisma.order.findUnique({ where: { id } });
+    return row ? toOrder(row) : undefined;
+  }
+
+  async markCancelled(id: string): Promise<Order> {
+    const row = await this.prisma.order.update({
+      where: { id },
+      data: { status: PrismaOrderStatus.CANCELLED },
+    });
+    return toOrder(row);
   }
 }
-

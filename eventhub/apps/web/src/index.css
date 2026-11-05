@@ -337,3 +337,69 @@ body {
 .event-page__head .favorite {
   padding: 0;
 }
+
+/* ── Тиждень 5: шапка користувача, форма входу, кабінет /me ──────── */
+
+.page__header--bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page__auth {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page__user {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.page__user:hover {
+  text-decoration: underline;
+}
+
+.auth-card {
+  max-width: 28rem;
+  margin: 2.5rem auto 0;
+  padding: 1.75rem;
+}
+
+.auth-card h2 {
+  margin: 1.25rem 0 1rem;
+  font-size: 1.25rem;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-form__field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.auth-form__field input {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+.auth-form__error {
+  margin: 0;
+  color: var(--accent);
+}
+
+.me-actions {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}

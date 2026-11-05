@@ -8,8 +8,11 @@ import {
   Param,
   Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 import type { Order } from "@eventhub/contracts";
+import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { OrdersService } from "./orders.service";
 import {
   CancelOrderQueryDto,
@@ -27,9 +30,13 @@ export class OrdersController {
     return this.orders.create(body);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get(":orderId")
-  getOne(@Param() params: OrderIdParamDto): Promise<Order> {
-    return this.orders.getOne(params.orderId);
+  getOne(
+    @Param() params: OrderIdParamDto,
+    @CurrentUser() current: AuthUser,
+  ): Promise<Order> {
+    return this.orders.getOne(params.orderId, current.id);
   }
 
   @Delete(":orderId")
@@ -40,4 +47,3 @@ export class OrdersController {
     return this.orders.cancel(params.orderId, query.buyerId);
   }
 }
-

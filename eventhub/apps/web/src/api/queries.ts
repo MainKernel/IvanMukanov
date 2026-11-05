@@ -1,5 +1,14 @@
-import type { Event, EventPage, FavoriteList, Problem } from "@eventhub/contracts";
-import { api } from "./client";
+import type {
+  AuthResponse,
+  Event,
+  EventPage,
+  FavoriteList,
+  LoginRequest,
+  Problem,
+  RegisterRequest,
+  UserDto,
+} from "@eventhub/contracts";
+import { api, getAccessToken, refreshAccessToken, setAccessToken } from "./client";
 
 /** Фільтри каталогу. Джерело правди — URL (див. useCatalogFilters). */
 export interface CatalogFilters {
@@ -66,6 +75,48 @@ export async function setFavorite(eventId: string, on: boolean): Promise<void> {
 }
 
 /**
+ * Повертає профіль поточного користувача або null, якщо сесії немає.
+ * Після F5 access-токена в пам'яті немає — спершу тихо пробуємо оновитися
+ * через httpOnly refresh-cookie.
+ */
+export async function fetchMe(): Promise<UserDto | null> {
+  if (!getAccessToken()) {
+    const ok = await refreshAccessToken();
+    if (!ok) return null;
+  }
+  const { data, error } = await api.GET("/auth/me");
+  if (error) return null;
+  return data;
+}
+
+export async function loginUser(body: LoginRequest): Promise<AuthResponse> {
+  const { data, error } = await api.POST("/auth/login", { body });
+  if (error) throw error;
+  setAccessToken(data.accessToken);
+  return data;
+}
+
+export async function registerUser(
+  body: RegisterRequest,
+): Promise<AuthResponse> {
+  const { data, error } = await api.POST("/auth/register", { body });
+  if (error) throw error;
+  setAccessToken(data.accessToken);
+  return data;
+}
+
+export async function logoutUser(): Promise<void> {
+  await api.POST("/auth/logout");
+  setAccessToken(null);
+}
+
+export async function logoutAllDevices(): Promise<void> {
+  const { error } = await api.POST("/auth/logout-all");
+  if (error) throw error;
+  setAccessToken(null);
+}
+
+/**
  * Людський текст помилки з problem+json.
  * title призначений людині; машинні рішення приймаються за стабільним type.
  * Мережевий збій (бекенд зупинено) відповіді не має — тоді загальний текст.
@@ -76,4 +127,3 @@ export function titleOf(error: unknown): string {
   }
   return "Не вдалося завантажити дані";
 }
-

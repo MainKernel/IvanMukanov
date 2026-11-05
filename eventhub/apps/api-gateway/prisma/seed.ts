@@ -1,4 +1,5 @@
-import { PrismaClient, SeatStatus } from "@prisma/client";
+import { OrderStatus, PrismaClient, Role, SeatStatus } from "@prisma/client";
+import * as argon2 from "argon2";
 import { createHash } from "node:crypto";
 
 const prisma = new PrismaClient();
@@ -210,12 +211,75 @@ async function main() {
     data: seatsData,
   });
 
+  console.log("Seeding demo users and orders...");
+  const demoPasswordHash = await argon2.hash("eventhub-demo-2026", {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+  });
+
+  const USERS = [
+    {
+      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
+      email: "student@example.com",
+      passwordHash: demoPasswordHash,
+      role: Role.USER,
+    },
+    {
+      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22",
+      email: "other@example.com",
+      passwordHash: demoPasswordHash,
+      role: Role.USER,
+    },
+  ];
+
+  for (const u of USERS) {
+    await prisma.user.upsert({
+      where: { id: u.id },
+      update: { email: u.email, passwordHash: u.passwordHash, role: u.role },
+      create: u,
+    });
+  }
+
+  const ORDERS = [
+    {
+      id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55",
+      userId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
+      eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
+      quantity: 2,
+      totalCents: 50000,
+      currency: "UAH",
+      status: OrderStatus.PENDING,
+      createdAt: new Date("2026-10-01T12:00:00.000Z"),
+    },
+    {
+      id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e66",
+      userId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22",
+      eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0",
+      quantity: 1,
+      totalCents: 18000,
+      currency: "UAH",
+      status: OrderStatus.PENDING,
+      createdAt: new Date("2026-10-02T12:00:00.000Z"),
+    },
+  ];
+
+  for (const o of ORDERS) {
+    await prisma.order.upsert({
+      where: { id: o.id },
+      update: o,
+      create: o,
+    });
+  }
+
   const venueCount = await prisma.venue.count();
   const eventCount = await prisma.event.count();
   const seatCount = await prisma.seat.count();
+  const userCount = await prisma.user.count();
+  const orderCount = await prisma.order.count();
 
   console.log(
-    `✓ Seed completed: ${venueCount} venues, ${eventCount} events, ${seatCount} seats.`,
+    `✓ Seed completed: ${venueCount} venues, ${eventCount} events, ${seatCount} seats, ${userCount} users, ${orderCount} orders.`,
   );
 }
 

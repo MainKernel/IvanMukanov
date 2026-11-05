@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import type { CreateOrderBody, Order } from "@eventhub/contracts";
 import { CatalogService } from "../catalog/catalog.service";
@@ -18,7 +17,7 @@ export class OrdersService {
     private readonly catalog: CatalogService,
   ) {}
 
-  async create(dto: CreateOrderBody): Promise<Order> {
+  async create(dto: CreateOrderBody, userId?: string): Promise<Order> {
     const event = await this.catalog.getOne(dto.eventId);
 
     if (event.cancelled) {
@@ -29,27 +28,23 @@ export class OrdersService {
       throw new SeatAlreadyHeld(event.id, dto.quantity, event.availableSeats);
     }
 
-    event.availableSeats -= dto.quantity;
-
-    const order: Order = {
-      id: randomUUID(),
+    return this.ordersRepo.create({
+      userId: userId ?? dto.buyerId,
       eventId: event.id,
-      buyerId: dto.buyerId,
       quantity: dto.quantity,
-      total: {
-        amount: event.minPrice.amount * dto.quantity,
-        currency: event.minPrice.currency,
-      },
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    };
-
-    return this.ordersRepo.save(order);
+      totalCents: event.minPrice.amount * dto.quantity,
+      currency: event.minPrice.currency,
+    });
   }
 
-  async getOne(orderId: string): Promise<Order> {
+  /**
+   * ДЗ ЛР №5 (п. 2): Перегляд замовлення захищено JwtAuthGuard.
+   * Якщо замовлення належить іншому користувачу — повертаємо 404 (OrderNotFound),
+   * а не 403, щоб не розкривати сам факт існування чужого замовлення за ID.
+   */
+  async getOne(orderId: string, currentUserId: string): Promise<Order> {
     const order = await this.ordersRepo.byId(orderId);
-    if (!order) {
+    if (!order || order.userId.toLowerCase() !== currentUserId.toLowerCase()) {
       throw new OrderNotFound(orderId);
     }
     return order;
@@ -61,7 +56,7 @@ export class OrdersService {
       throw new OrderNotFound(orderId);
     }
 
-    if (order.buyerId.toLowerCase() !== buyerId.toLowerCase()) {
+    if (order.userId.toLowerCase() !== buyerId.toLowerCase()) {
       throw new ForbiddenOrderAccess(orderId);
     }
 
@@ -69,15 +64,6 @@ export class OrdersService {
       throw new OrderAlreadyCancelled(orderId);
     }
 
-    const event = await this.catalog.getOne(order.eventId);
-    event.availableSeats += order.quantity;
-
-    const updated: Order = {
-      ...order,
-      status: "cancelled",
-    };
-
-    return this.ordersRepo.save(updated);
+    return this.ordersRepo.markCancelled(orderId);
   }
 }
-

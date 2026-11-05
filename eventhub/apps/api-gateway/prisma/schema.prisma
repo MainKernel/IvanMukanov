@@ -6,10 +6,22 @@ datasource db {
     provider = "postgresql"
     url = env("DATABASE_URL")
 }
+
 enum SeatStatus {
     FREE
     HELD
     SOLD
+}
+
+enum Role {
+    USER
+    ORGANIZER
+    ADMIN
+}
+
+enum OrderStatus {
+    PENDING
+    CANCELLED
 }
 
 model Venue {
@@ -32,9 +44,11 @@ model Event {
     createdAt DateTime @default(now()) @db.Timestamptz(3)
     venue Venue @relation(fields: [venueId], references: [id])
     seats Seat[]
+    orders Order[]
     @@index([startsAt, id])
     @@index([venueId])
 }
+
 model Seat {
     id String @id @default(uuid(7)) @db.Uuid
     eventId String @db.Uuid
@@ -47,4 +61,48 @@ model Seat {
 
     @@unique([eventId, rowLabel, number])
     @@index([eventId, status])
+}
+
+model User {
+    id           String   @id @default(uuid(7)) @db.Uuid
+    email        String   @unique
+    passwordHash String
+    role         Role     @default(USER)
+    createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+    refreshTokens RefreshToken[]
+    orders        Order[]
+}
+
+model RefreshToken {
+    id        String    @id @default(uuid(7)) @db.Uuid
+    userId    String    @db.Uuid
+    familyId  String    @db.Uuid
+    tokenHash String    @unique
+    expiresAt DateTime  @db.Timestamptz(3)
+    usedAt    DateTime? @db.Timestamptz(3)
+    revokedAt DateTime? @db.Timestamptz(3)
+    createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([familyId])
+    @@index([userId])
+}
+
+model Order {
+    id         String      @id @default(uuid(7)) @db.Uuid
+    userId     String      @db.Uuid
+    eventId    String      @db.Uuid
+    quantity   Int
+    totalCents Int
+    currency   String      @default("UAH") @db.Char(3)
+    status     OrderStatus @default(PENDING)
+    createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+
+    user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+    event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([eventId])
 }

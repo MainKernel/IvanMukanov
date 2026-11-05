@@ -5,6 +5,7 @@ packages:
 engineStrict: true
 
 allowBuilds:
+  argon2: true # нативний модуль хешування паролів
   esbuild: true
   "@prisma/client": true # генерує клієнт під час установки
   "@prisma/engines": true

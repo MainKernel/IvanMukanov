@@ -17,6 +17,12 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // ЛР №5: параметри підпису access-токена та тривалості сесії.
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, "JWT_ACCESS_SECRET: щонайменше 32 символи"),
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(1).default(900),
+  REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
 });
 
 export type Env = z.infer<typeof envSchema>;

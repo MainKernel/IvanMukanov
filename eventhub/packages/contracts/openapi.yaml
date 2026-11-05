@@ -290,7 +290,11 @@ paths:
                     createdAt: "2026-10-01T12:00:00Z"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
         "404":
+          # Чуже замовлення також повертає 404, а не 403 (ДЗ ЛР №5),
+          # щоб не видавати сам факт існування чужого замовлення.
           $ref: "#/components/responses/NotFound"
 
     delete:
@@ -333,7 +337,117 @@ paths:
         "409":
           $ref: "#/components/responses/OrderConflict"
 
+  # ============================================================================
+  # АВТЕНТИФІКАЦІЯ (Лабораторна робота №5 + ДЗ №1)
+  # ============================================================================
+  /auth/register:
+    post:
+      operationId: register
+      summary: Реєстрація нового користувача
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Користувача створено; refresh-токен встановлено у httpOnly-cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/EmailTaken"
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Вхід за поштою та паролем
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Успішний вхід; refresh-токен встановлено у httpOnly-cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          # Однакова відповідь і на «немає такої пошти», і на «невірний пароль»
+          $ref: "#/components/responses/InvalidCredentials"
+
+  /auth/refresh:
+    post:
+      operationId: refresh
+      summary: Ротація refresh-токена (з httpOnly-cookie) та видача нового access-токена
+      tags: [auth]
+      responses:
+        "200":
+          description: Новий access-токен; новий refresh-токен встановлено у httpOnly-cookie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+        "401":
+          $ref: "#/components/responses/InvalidRefreshToken"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Вихід із поточної сесії (відкликання сімейства токенів та очищення cookie)
+      tags: [auth]
+      responses:
+        "204":
+          description: Сесію завершено
+
+  /auth/logout-all:
+    post:
+      operationId: logoutAll
+      summary: Вихід з усіх пристроїв поточного користувача (ДЗ ЛР №5)
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Усі refresh-токени користувача відкликано
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      summary: Профіль поточного автентифікованого користувача
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Поточний користувач (без passwordHash)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     Event:
       type: object
@@ -397,15 +511,56 @@ components:
 
     Order:
       type: object
-      required: [id, eventId, buyerId, quantity, total, status, createdAt]
+      required: [id, userId, eventId, buyerId, quantity, total, status, createdAt]
       properties:
         id:        { type: string, format: uuid }
+        userId:    { type: string, format: uuid }
         eventId:   { type: string, format: uuid }
         buyerId:   { type: string, format: uuid }
         quantity:  { type: integer, minimum: 1, maximum: 10 }
         total:     { $ref: "#/components/schemas/Money" }
         status:    { $ref: "#/components/schemas/OrderStatus" }
         createdAt: { type: string, format: date-time }
+
+    Role:
+      type: string
+      enum: [USER, ORGANIZER, ADMIN]
+
+    User:
+      type: object
+      required: [id, email, role, createdAt]
+      properties:
+        id:        { type: string, format: uuid }
+        email:     { type: string, format: email, maxLength: 254 }
+        role:      { $ref: "#/components/schemas/Role" }
+        createdAt: { type: string, format: date-time }
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken: { type: string }
+        user:        { $ref: "#/components/schemas/User" }
+
+    RefreshResponse:
+      type: object
+      required: [accessToken]
+      properties:
+        accessToken: { type: string }
 
     Problem:
       type: object
@@ -506,3 +661,55 @@ components:
                 title: Подію скасовано організатором
                 status: 422
                 detail: "Продаж квитків припинено, оскільки організатор скасував подію"
+
+    InvalidCredentials:
+      description: Невірна пошта або пароль (однакова відповідь для обох випадків)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            invalidCredentials:
+              value:
+                type: /errors/invalid-credentials
+                title: Невірна пошта або пароль
+                status: 401
+                detail: "Перевірте введену пошту та пароль"
+
+    Unauthenticated:
+      description: Відсутній або недійсний access-токен
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            unauthenticated:
+              value:
+                type: /errors/unauthenticated
+                title: Потрібна автентифікація
+                status: 401
+                detail: "Надайте дійсний Bearer-токен у заголовку Authorization"
+
+    InvalidRefreshToken:
+      description: Refresh-токен відсутній, протермінований, відкликаний або використаний повторно
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            invalidRefresh:
+              value:
+                type: /errors/invalid-refresh-token
+                title: Сесія недійсна або завершена
+                status: 401
+                detail: "Увійдіть у систему заново"
+
+    EmailTaken:
+      description: Користувач із такою поштою вже існує
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            emailTaken:
+              value:
+                type: /errors/email-taken
+                title: Ця пошта вже зареєстрована
+                status: 409
+                detail: "Спробуйте увійти або вкажіть іншу адресу електронної пошти"

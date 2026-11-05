@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import cookieParser from "cookie-parser";
 import { NestFactory } from "@nestjs/core";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
@@ -10,6 +11,8 @@ async function bootstrap(): Promise<void> {
 
   const logger = app.get(Logger);
   app.useLogger(logger);
+
+  app.use(cookieParser());
 
   // Дозволяємо запити з dev-сервера Vite.
   // У тижні 14 це значення прийде з оточення продакшн-сервера.

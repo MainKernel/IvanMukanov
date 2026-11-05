@@ -15,11 +15,14 @@ export const eventKeys = {
   detail: (eventId: string) => ["events", "detail", eventId] as const,
 };
 
-
 /**
  * Обране — окремий префікс: це стан користувача, а не каталогу.
  * Інвалідація eventKeys.all після бронювання його не зачіпає, і навпаки.
  */
 export const favoriteKeys = {
   all: ["favorites"] as const,
+};
+
+export const authKeys = {
+  me: ["auth", "me"] as const,
 };

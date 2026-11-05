@@ -11,6 +11,22 @@ const uuidLike = z
     "Очікується ідентифікатор у форматі UUID",
   );
 
+// toLowerCase() на межі: інакше Student@Example.com і student@example.com
+// стали б двома різними користувачами.
+const email = z.string().trim().toLowerCase().email().max(254);
+
+export const registerBody = z.object({
+  email,
+  password: z.string().min(10).max(128),
+});
+export type RegisterBody = z.infer<typeof registerBody>;
+
+export const loginBody = z.object({
+  email,
+  password: z.string().min(1).max(128),
+});
+export type LoginBody = z.infer<typeof loginBody>;
+
 export const listEventsQuery = z.object({
   city: z.string().trim().min(1).optional(),
   // Пошук за назвою (ДЗ ЛР №4). Межі збігаються з minLength/maxLength в openapi.yaml.
@@ -63,6 +79,8 @@ type OpenApiCancelOrderQuery =
   paths["/orders/{orderId}"]["delete"]["parameters"]["query"];
 type OpenApiFavoriteEventIdParam =
   paths["/favorites/{eventId}"]["parameters"]["path"];
+type OpenApiRegisterBody = components["schemas"]["RegisterRequest"];
+type OpenApiLoginBody = components["schemas"]["LoginRequest"];
 
 type AssertStructuralMatch<TZod, TOpenApi> =
   TZod extends TOpenApi
@@ -91,10 +109,17 @@ const _assertCancelOrderQuery: AssertStructuralMatch<
   CancelOrderQuery,
   OpenApiCancelOrderQuery
 > = true;
-
 const _assertFavoriteEventIdParam: AssertStructuralMatch<
   FavoriteEventIdParam,
   OpenApiFavoriteEventIdParam
+> = true;
+const _assertRegisterBody: AssertStructuralMatch<
+  RegisterBody,
+  OpenApiRegisterBody
+> = true;
+const _assertLoginBody: AssertStructuralMatch<
+  LoginBody,
+  OpenApiLoginBody
 > = true;
 
 void _assertListEventsQuery;
@@ -103,3 +128,5 @@ void _assertCreateOrderBody;
 void _assertOrderIdParam;
 void _assertCancelOrderQuery;
 void _assertFavoriteEventIdParam;
+void _assertRegisterBody;
+void _assertLoginBody;

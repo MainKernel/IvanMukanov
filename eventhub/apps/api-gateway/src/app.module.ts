@@ -12,6 +12,7 @@ import { HealthModule } from "./health/health.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { OrdersModule } from "./orders/orders.module";
 import { FavoritesModule } from "./favorites/favorites.module";
+import { AuthModule } from "./auth/auth.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { toProblem } from "./common/problem/problem";
 import { env } from "./common/config/env";
@@ -78,6 +79,7 @@ export class ProblemFilter implements ExceptionFilter {
     CatalogModule,
     OrdersModule,
     FavoritesModule,
+    AuthModule,
     PrismaModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
