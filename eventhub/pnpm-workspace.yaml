@@ -6,4 +6,8 @@ engineStrict: true
 
 allowBuilds:
   esbuild: true
+  "@prisma/client": true # генерує клієнт під час установки
+  "@prisma/engines": true
+  prisma: true # завантажує рушій запитів
   "@scarf/scarf": false
+  workerd: true

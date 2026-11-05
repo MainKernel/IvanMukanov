@@ -18,6 +18,7 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
+  app.enableShutdownHooks();
   app.useGlobalPipes(new ZodValidationPipe());
 
   await app.listen(env.PORT);
