@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 export interface FindParams {
   city?: string;
+  q?: string;
   from?: string;
   after?: {
     startsAt: string;
@@ -39,6 +40,11 @@ export class EventRepository {
       where: {
         ...(params.city
           ? { venue: { city: { equals: params.city, mode: "insensitive" } } }
+          : {}),
+        // Пошук за назвою (ДЗ ЛР №4): ILIKE '%q%' на боці бази.
+        // На порядок сортування не впливає, тож курсор лишається коректним.
+        ...(params.q
+          ? { title: { contains: params.q, mode: "insensitive" } }
           : {}),
         ...(params.from
           ? { startsAt: { gte: new Date(`${params.from}T00:00:00Z`) } }

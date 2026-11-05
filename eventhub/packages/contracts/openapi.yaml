@@ -25,6 +25,18 @@ paths:
           schema:
             type: string
             examples: [Вінниця]
+        - name: q
+          in: query
+          required: false
+          description: >-
+            Пошук за назвою події (підрядок, без урахування регістру).
+            Порожній рядок рівнозначний відсутності параметра на клієнті —
+            такий параметр не надсилається.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            examples: [джаз]
         - name: from
           in: query
           required: false
@@ -111,6 +123,63 @@ paths:
                     availableSeats: 143
         "404":
           $ref: "#/components/responses/NotFound"
+
+  # ============================================================================
+  # ОБРАНЕ (Домашнє завдання ЛР №4)
+  #
+  # До тижня 5 (автентифікація) обране одне на весь застосунок і зберігається
+  # у пам'яті api-gateway. Після появи користувача шляхи стануть
+  # /me/favorites, а контракт відповіді не зміниться.
+  #
+  # PUT і DELETE ідемпотентні: повторне додавання/видалення — той самий 204.
+  # Саме тому для оптимістичного оновлення на клієнті не потрібен POST-toggle:
+  # клієнт завжди каже, який стан хоче, а не «переключи».
+  # ============================================================================
+  /favorites:
+    get:
+      operationId: listFavorites
+      summary: Ідентифікатори обраних подій
+      tags: [favorites]
+      responses:
+        "200":
+          description: Обрані події
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FavoriteList"
+              examples:
+                default:
+                  value:
+                    eventIds: [018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f]
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /favorites/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: addFavorite
+      summary: Додати подію в обране (ідемпотентно)
+      tags: [favorites]
+      responses:
+        "204":
+          description: Подія в обраному
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: removeFavorite
+      summary: Прибрати подію з обраного (ідемпотентно)
+      tags: [favorites]
+      responses:
+        "204":
+          description: Події немає в обраному
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   # ============================================================================
   # ЗАМОВЛЕННЯ (Домашнє завдання ЛР №2)
@@ -306,6 +375,14 @@ components:
           type: [string, "null"]
           description: Курсор наступної сторінки; null — сторінок більше немає
 
+    FavoriteList:
+      type: object
+      required: [eventIds]
+      properties:
+        eventIds:
+          type: array
+          items: { type: string, format: uuid }
+
     CreateOrderRequest:
       type: object
       required: [eventId, buyerId, quantity]
@@ -403,6 +480,19 @@ components:
                 title: Замовлення вже скасовано
                 status: 409
                 detail: "Це замовлення вже перебуває у статусі cancelled"
+
+    ServiceUnavailable:
+      description: Сервіс тимчасово недоступний — запит можна повторити
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            favoritesUnavailable:
+              value:
+                type: /errors/favorites-unavailable
+                title: Не вдалося оновити обране
+                status: 503
+                detail: "Сервіс обраного тимчасово недоступний. Спробуйте ще раз."
 
     EventCancelled:
       description: Операція неможлива за бізнес-правилами (подію скасовано організатором)

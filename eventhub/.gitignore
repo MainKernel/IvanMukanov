@@ -45,3 +45,5 @@ pnpm-debug.log*
 # Тести та покриття
 coverage/
 .nyc_output/
+# Turborepo cache
+.turbo/

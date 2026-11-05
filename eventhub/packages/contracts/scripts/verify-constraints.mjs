@@ -124,6 +124,32 @@ verifyField({
   constraints: quantityConstraints,
 });
 
+// 3. Перевірка GET /events -> query.q (рядкові межі minLength / maxLength, ДЗ ЛР №4)
+const qBlock = yamlText.match(
+  /- name:\s*q\n[\s\S]*?schema:([\s\S]*?)(?=\n\s*- name:)/,
+);
+if (!qBlock || !qBlock[1]) {
+  throw new Error('[Contract Sync] Не вдалося знайти блок "GET /events parameter q" в openapi.yaml');
+}
+const qMin = Number(qBlock[1].match(/minLength:\s*(\d+)/)?.[1]);
+const qMax = Number(qBlock[1].match(/maxLength:\s*(\d+)/)?.[1]);
+if (Number.isNaN(qMin) || Number.isNaN(qMax)) {
+  errors.push("[GET /events (query.q)] В openapi.yaml очікуються minLength і maxLength");
+} else {
+  const check = (len, shouldPass) => {
+    const ok = listEventsQuery.safeParse({ q: "я".repeat(len) }).success;
+    if (ok !== shouldPass) {
+      errors.push(
+        `[GET /events (query.q)] Рядок довжиною ${len} мав бути ${shouldPass ? "прийнятий" : "відхилений"} (openapi.yaml: ${qMin}..${qMax})`,
+      );
+    }
+  };
+  if (qMin > 0) check(qMin - 1, false);
+  check(qMin, true);
+  check(qMax, true);
+  check(qMax + 1, false);
+}
+
 if (errors.length > 0) {
   console.error("\n❌ Виявлено розбіжність між openapi.yaml та Zod-схемами:");
   for (const err of errors) {
@@ -133,6 +159,6 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `✓ Узгодженість обмежень openapi.yaml ↔ Zod перевірено (limit: ${limitConstraints.minimum}..${limitConstraints.maximum} [default=${limitConstraints.defaultValue}], quantity: ${quantityConstraints.minimum}..${quantityConstraints.maximum})`,
+  `✓ Узгодженість обмежень openapi.yaml ↔ Zod перевірено (limit: ${limitConstraints.minimum}..${limitConstraints.maximum} [default=${limitConstraints.defaultValue}], quantity: ${quantityConstraints.minimum}..${quantityConstraints.maximum}, q: ${qMin}..${qMax} символів)`,
 );
 

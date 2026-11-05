@@ -13,6 +13,7 @@ export type EventPage = components["schemas"]["EventPage"];
 export type VenueSummary = components["schemas"]["VenueSummary"];
 export type Money = components["schemas"]["Money"];
 export type Problem = components["schemas"]["Problem"];
+export type FavoriteList = components["schemas"]["FavoriteList"];
 export type Order = components["schemas"]["Order"];
 export type OrderStatus = components["schemas"]["OrderStatus"];
 export type CreateOrderRequest = components["schemas"]["CreateOrderRequest"];

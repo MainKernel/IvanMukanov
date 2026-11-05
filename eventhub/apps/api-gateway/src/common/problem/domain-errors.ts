@@ -66,3 +66,9 @@ export class OrderAlreadyCancelled extends DomainError {
     super(`Замовлення ${orderId} вже перебуває у статусі cancelled`);
   }
 }
+
+export class FavoritesUnavailable extends DomainError {
+  constructor() {
+    super("Сервіс обраного тимчасово недоступний. Спробуйте ще раз.");
+  }
+}

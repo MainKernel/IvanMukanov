@@ -11,6 +11,12 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("debug"),
   PRISMA_LOG: z.enum(["query", "off"]).default("off"),
+  // ДЗ ЛР №4: примусово відповідати 503 на зміну обраного, щоб перевірити
+  // відкат оптимістичного оновлення на фронтенді.
+  FAVORITES_FAIL: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;

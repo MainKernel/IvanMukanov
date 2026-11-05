@@ -3,6 +3,7 @@ import type { Problem } from "@eventhub/contracts";
 import {
   EventCancelledError,
   EventNotFound,
+  FavoritesUnavailable,
   ForbiddenOrderAccess,
   InvalidCursor,
   OrderAlreadyCancelled,
@@ -85,6 +86,15 @@ export function toProblem(err: unknown): ProblemBody {
       type: "/errors/event-cancelled",
       title: "Подію скасовано організатором",
       status: 422,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof FavoritesUnavailable) {
+    return {
+      type: "/errors/favorites-unavailable",
+      title: "Не вдалося оновити обране",
+      status: 503,
       detail: err.message,
     };
   }

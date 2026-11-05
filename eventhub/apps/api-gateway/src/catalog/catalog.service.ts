@@ -12,6 +12,7 @@ export class CatalogService {
     const after = query.cursor ? decodeCursor(query.cursor) : undefined;
     const rows = await this.repo.find({
       city: query.city,
+      q: query.q,
       from: query.from,
       after,
       limit: query.limit,

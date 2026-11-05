@@ -13,6 +13,8 @@ const uuidLike = z
 
 export const listEventsQuery = z.object({
   city: z.string().trim().min(1).optional(),
+  // Пошук за назвою (ДЗ ЛР №4). Межі збігаються з minLength/maxLength в openapi.yaml.
+  q: z.string().trim().min(1).max(100).optional(),
   from: z.string().date().optional(),
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
@@ -41,6 +43,11 @@ export const cancelOrderQuery = z.object({
 });
 export type CancelOrderQuery = z.infer<typeof cancelOrderQuery>;
 
+export const favoriteEventIdParam = z.object({
+  eventId: uuidLike,
+});
+export type FavoriteEventIdParam = z.infer<typeof favoriteEventIdParam>;
+
 // ============================================================================
 // Тип-рівнева перевірка узгодженості Zod-схем зі згенерованими типами OpenAPI
 // (Частина рішення ADR-0002: якщо в openapi.yaml зміниться набір полів або їхні
@@ -54,6 +61,8 @@ type OpenApiCreateOrderBody = components["schemas"]["CreateOrderRequest"];
 type OpenApiOrderIdParam = paths["/orders/{orderId}"]["get"]["parameters"]["path"];
 type OpenApiCancelOrderQuery =
   paths["/orders/{orderId}"]["delete"]["parameters"]["query"];
+type OpenApiFavoriteEventIdParam =
+  paths["/favorites/{eventId}"]["parameters"]["path"];
 
 type AssertStructuralMatch<TZod, TOpenApi> =
   TZod extends TOpenApi
@@ -83,8 +92,14 @@ const _assertCancelOrderQuery: AssertStructuralMatch<
   OpenApiCancelOrderQuery
 > = true;
 
+const _assertFavoriteEventIdParam: AssertStructuralMatch<
+  FavoriteEventIdParam,
+  OpenApiFavoriteEventIdParam
+> = true;
+
 void _assertListEventsQuery;
 void _assertEventIdParam;
 void _assertCreateOrderBody;
 void _assertOrderIdParam;
 void _assertCancelOrderQuery;
+void _assertFavoriteEventIdParam;
