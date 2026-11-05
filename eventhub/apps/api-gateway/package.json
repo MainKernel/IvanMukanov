@@ -3,17 +3,27 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "prisma generate && nest build",
+    "dev": "prisma generate && nest start --watch",
     "start": "node dist/main.js",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset --force",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:bench": "tsx prisma/bench.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@eventhub/contracts": "workspace:*",
     "@nestjs/common": "^11.1.0",
     "@nestjs/core": "^11.1.0",
     "@nestjs/platform-express": "^11.1.0",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^18.0.9",
     "nestjs-pino": "^5.3.1",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
@@ -29,6 +39,8 @@
     "@types/pino-http": "^6.1.0",
     "eslint": "^10.0.0",
     "pino-pretty": "^13.2.0",
+    "prisma": "^6.19.3",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3"
   }
 }
