@@ -60,31 +60,13 @@ export class OrdersRepository {
         // Крок 0. Прибираємо прострочені резерви саме цієї події.
         await this.releaseExpired(tx, now, { eventId: input.eventId });
 
-        // Крок 1. Резерв – одним атомарним UPDATE.
-        const held = await tx.seat.updateMany({
-          where: {
-            id: { in: seatIds },
-            eventId: input.eventId,
-            status: SeatStatus.FREE,
-          },
-          data: {
-            status: SeatStatus.HELD,
-            holdExpiresAt: holdUntil,
-          },
+        // Експеримент Б: перевірка перед записом усередині $transaction
+        const seat = await tx.seat.findUnique({ where: { id: seatIds[0] } });
+        if (seat?.status !== "FREE") throw new SeatsUnavailable(seatIds);
+        await tx.seat.update({
+          where: { id: seatIds[0] },
+          data: { status: "HELD", holdExpiresAt: holdUntil },
         });
-
-        // Крок 2. Перевірка count – обов'язкова.
-        if (held.count !== seatIds.length) {
-          throw new SeatsUnavailable(
-            await this.whichAreTaken(
-              tx,
-              seatIds,
-              input.eventId,
-              now,
-              held.count > 0 ? holdUntil : undefined,
-            ),
-          );
-        }
 
         // Крок 3. Ціни беремо з бази, а не з клієнта.
         const seats = await tx.seat.findMany({
