@@ -1,25 +1,26 @@
 {
-"name": "@eventhub/contracts",
-"version": "0.0.0",
-"private": true,
-"main": "./dist/index.js",
-"types": "./dist/index.d.ts",
-"exports": {
-".": {
-"types": "./dist/index.d.ts",
-"default": "./dist/index.js"
-}
-},
-"scripts": {
-"generate": "openapi-typescript ./openapi.yaml -o ./src/generated/schema.ts",
-"build": "pnpm generate && tsc -p tsconfig.build.json",
-"typecheck": "tsc -p tsconfig.build.json --noEmit"
-},
-"dependencies": {
-"zod": "^3.24.0"
-},
-"devDependencies": {
-"openapi-typescript": "^7.13.0",
-"typescript": "5.9.3"
-}
+  "name": "@eventhub/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "openapi-typescript ./openapi.yaml -o ./src/generated/schema.ts",
+    "verify": "node ./scripts/verify-constraints.mjs",
+    "build": "pnpm generate && tsc -p tsconfig.build.json && pnpm verify",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "5.9.3"
+  }
 }

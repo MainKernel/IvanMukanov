@@ -112,6 +112,158 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # ============================================================================
+  # ЗАМОВЛЕННЯ (Домашнє завдання ЛР №2)
+  #
+  # Письмове обґрунтування вибору HTTP-кодів помилок:
+  #
+  # 1. Місце вже утримує інший покупець (або вільних місць зараз недостатньо):
+  #    -> 409 Conflict (#/components/responses/OrderConflict).
+  #    Чому 409: Запит синтаксично коректний і клієнт має право купувати квитки,
+  #    але операція конфліктує з поточним динамічним станом ресурсу (місце
+  #    тимчасово заблоковане іншим покупцем на час резерву).
+  #    Чи має сенс повторити запит через хвилину? ТАК: якщо інший покупець
+  #    не завершить оплату або скасує бронь, місце звільниться і повторний
+  #    запит пройде успішно.
+  #
+  # 2. Подія скасована організатором:
+  #    -> 422 Unprocessable Content (#/components/responses/EventCancelled).
+  #    Чому 422: Формат і типи полів запиту валідні (тому не 400), ресурс події
+  #    існує (тому не 404), але бізнес-правило домену забороняє створювати
+  #    замовлення на подію в термінальному стані "cancelled".
+  #    Чи має сенс повторити запит через хвилину? НІ: скасування події є
+  #    незворотним бізнес-рішенням, повтор запиту нічого не змінить.
+  #
+  # 3. Користувач намагається скасувати чуже замовлення:
+  #    -> 403 Forbidden (#/components/responses/Forbidden).
+  #    Чому 403: Сервер розуміє, хто робить запит (buyerId відомий), але цей
+  #    суб'єкт не є власником замовлення й не має повноважень на його зміну.
+  #    Чи має сенс повторити запит через хвилину? НІ: без зміни облікового
+  #    запису / прав доступу повтор того самого запиту завжди повертатиме 403.
+  #
+  # Чим ці три випадки відрізняються з погляду клієнта (фронтенду):
+  # - При 409 клієнту варто запропонувати кнопку «Спробувати ще раз» або оновити
+  #   схему залу.
+  # - При 422 кнопку покупки треба заблокувати й показати плашку «Подію скасовано».
+  # - При 403 показати повідомлення про відсутність прав доступу без ретраїв.
+  # ============================================================================
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Створити замовлення на подію
+      tags: [orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            examples:
+              default:
+                summary: Замовлення двох квитків
+                value:
+                  eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                  buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
+                  quantity: 2
+      responses:
+        "201":
+          description: Замовлення створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              examples:
+                created:
+                  summary: Нове замовлення в очікуванні оплати
+                  value:
+                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
+                    quantity: 2
+                    total: { amount: 50000, currency: UAH }
+                    status: pending
+                    createdAt: "2026-10-01T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConflict"
+        "422":
+          $ref: "#/components/responses/EventCancelled"
+
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      summary: Переглянути замовлення за ідентифікатором
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Деталі замовлення
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              examples:
+                default:
+                  value:
+                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
+                    quantity: 2
+                    total: { amount: 50000, currency: UAH }
+                    status: pending
+                    createdAt: "2026-10-01T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: cancelOrder
+      summary: Скасувати замовлення
+      tags: [orders]
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: buyerId
+          in: query
+          required: true
+          description: Ідентифікатор покупця, який ініціює скасування (до появи повноцінної JWT-автентифікації)
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Замовлення скасовано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+              examples:
+                cancelled:
+                  value:
+                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
+                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
+                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
+                    quantity: 2
+                    total: { amount: 50000, currency: UAH }
+                    status: cancelled
+                    createdAt: "2026-10-01T12:00:00Z"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/OrderConflict"
+
 components:
   schemas:
     Event:
@@ -125,6 +277,7 @@ components:
         venue:       { $ref: "#/components/schemas/VenueSummary" }
         minPrice:    { $ref: "#/components/schemas/Money" }
         availableSeats: { type: integer, minimum: 0 }
+        cancelled:   { type: boolean }
 
     VenueSummary:
       type: object
@@ -153,6 +306,30 @@ components:
           type: [string, "null"]
           description: Курсор наступної сторінки; null — сторінок більше немає
 
+    CreateOrderRequest:
+      type: object
+      required: [eventId, buyerId, quantity]
+      properties:
+        eventId:  { type: string, format: uuid }
+        buyerId:  { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1, maximum: 10 }
+
+    OrderStatus:
+      type: string
+      enum: [pending, cancelled]
+
+    Order:
+      type: object
+      required: [id, eventId, buyerId, quantity, total, status, createdAt]
+      properties:
+        id:        { type: string, format: uuid }
+        eventId:   { type: string, format: uuid }
+        buyerId:   { type: string, format: uuid }
+        quantity:  { type: integer, minimum: 1, maximum: 10 }
+        total:     { $ref: "#/components/schemas/Money" }
+        status:    { $ref: "#/components/schemas/OrderStatus" }
+        createdAt: { type: string, format: date-time }
+
     Problem:
       type: object
       description: RFC 9457 Problem Details
@@ -178,6 +355,19 @@ components:
                 status: 400
                 detail: "Параметр limit має бути в межах 1..50"
 
+    Forbidden:
+      description: Доступ заборонено (спроба змінити або скасувати чуже замовлення)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            foreignOrder:
+              value:
+                type: /errors/forbidden-order-access
+                title: Доступ до замовлення заборонено
+                status: 403
+                detail: "Ви не можете скасувати замовлення іншого покупця"
+
     NotFound:
       description: Ресурс не знайдено
       content:
@@ -189,3 +379,40 @@ components:
                 type: /errors/not-found
                 title: Подію не знайдено
                 status: 404
+            orderNotFound:
+              value:
+                type: /errors/order-not-found
+                title: Замовлення не знайдено
+                status: 404
+
+    OrderConflict:
+      description: Конфлікт стану ресурсу (місце вже утримується іншим покупцем або замовлення вже скасовано)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            seatHeldByAnotherBuyer:
+              value:
+                type: /errors/seat-already-held
+                title: Місця вже утримуються іншим покупцем
+                status: 409
+                detail: "Обрана кількість місць зараз недоступна через активне бронювання іншого покупця. Спробуйте через хвилину."
+            alreadyCancelled:
+              value:
+                type: /errors/order-already-cancelled
+                title: Замовлення вже скасовано
+                status: 409
+                detail: "Це замовлення вже перебуває у статусі cancelled"
+
+    EventCancelled:
+      description: Операція неможлива за бізнес-правилами (подію скасовано організатором)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            eventCancelledByOrganizer:
+              value:
+                type: /errors/event-cancelled
+                title: Подію скасовано організатором
+                status: 422
+                detail: "Продаж квитків припинено, оскільки організатор скасував подію"

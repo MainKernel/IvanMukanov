@@ -1,9 +1,14 @@
 import { HttpException } from "@nestjs/common";
 import type { Problem } from "@eventhub/contracts";
 import {
+  EventCancelledError,
   EventNotFound,
+  ForbiddenOrderAccess,
   InvalidCursor,
+  OrderAlreadyCancelled,
+  OrderNotFound,
   RequestValidationFailed,
+  SeatAlreadyHeld,
 } from "./domain-errors";
 
 export interface ProblemBody extends Problem {
@@ -30,11 +35,56 @@ export function toProblem(err: unknown): ProblemBody {
     };
   }
 
+  if (err instanceof ForbiddenOrderAccess) {
+    return {
+      type: "/errors/forbidden-order-access",
+      title: "Доступ до замовлення заборонено",
+      status: 403,
+      detail: err.message,
+    };
+  }
+
   if (err instanceof EventNotFound) {
     return {
       type: "/errors/not-found",
       title: "Подію не знайдено",
       status: 404,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OrderNotFound) {
+    return {
+      type: "/errors/order-not-found",
+      title: "Замовлення не знайдено",
+      status: 404,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof SeatAlreadyHeld) {
+    return {
+      type: "/errors/seat-already-held",
+      title: "Місця вже утримуються іншим покупцем",
+      status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OrderAlreadyCancelled) {
+    return {
+      type: "/errors/order-already-cancelled",
+      title: "Замовлення вже скасовано",
+      status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof EventCancelledError) {
+    return {
+      type: "/errors/event-cancelled",
+      title: "Подію скасовано організатором",
+      status: 422,
       detail: err.message,
     };
   }

@@ -17,7 +17,7 @@ export class EventRepository {
   private readonly events: Event[] = [...EVENTS].sort(byStartThenId);
 
   async find(params: FindParams): Promise<Event[]> {
-    let rows = this.events;
+    let rows = this.events.filter((e) => !e.cancelled);
     if (params.city) {
       const needle = params.city.toLocaleLowerCase("uk");
       rows = rows.filter(

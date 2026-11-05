@@ -10,6 +10,7 @@ import { InjectPinoLogger, LoggerModule, PinoLogger } from "nestjs-pino";
 import type { Request, Response } from "express";
 import { HealthModule } from "./health/health.module";
 import { CatalogModule } from "./catalog/catalog.module";
+import { OrdersModule } from "./orders/orders.module";
 import { toProblem } from "./common/problem/problem";
 import { env } from "./common/config/env";
 
@@ -73,6 +74,7 @@ export class ProblemFilter implements ExceptionFilter {
     }),
     HealthModule,
     CatalogModule,
+    OrdersModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
 })
