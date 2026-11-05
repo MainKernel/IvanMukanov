@@ -1,8 +1,9 @@
 // Публічне обличчя пакета. Усі інші пакети імпортують типи звідси,
 // а не з ./generated напряму — так шлях до згенерованого файлу
 // лишається деталлю реалізації, яку можна змінити без правок у споживачах.
-
+export * from "./schemas";
 export type { paths, components } from "./generated/schema";
+
 
 import type { components } from "./generated/schema";
 
