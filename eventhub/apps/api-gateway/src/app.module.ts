@@ -13,6 +13,8 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { OrdersModule } from "./orders/orders.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { AuthModule } from "./auth/auth.module";
+import { OrganizerModule } from "./organizer/organizer.module";
+import { AdminModule } from "./admin/admin.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { toProblem } from "./common/problem/problem";
 import { env } from "./common/config/env";
@@ -80,6 +82,8 @@ export class ProblemFilter implements ExceptionFilter {
     OrdersModule,
     FavoritesModule,
     AuthModule,
+    OrganizerModule,
+    AdminModule,
     PrismaModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],

@@ -1,12 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { titleOf } from "../../api/queries";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { oauthErrorMessage, titleOf } from "../../api/queries";
 import { useCurrentUser, useLogin, useRegister } from "./useAuth";
 
 export function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [searchParams] = useSearchParams();
 
   const { data: user } = useCurrentUser();
   const login = useLogin();
@@ -16,6 +22,7 @@ export function LoginPage() {
 
   const from =
     (location.state as { from?: string } | null)?.from ?? "/me";
+  const oauthError = oauthErrorMessage(searchParams.get("oauthError"));
 
   if (user) {
     return <Navigate to={from} replace />;
@@ -68,6 +75,12 @@ export function LoginPage() {
 
       <h2>{mode === "login" ? "Вхід у систему" : "Створення облікового запису"}</h2>
 
+      {oauthError && (
+        <p className="auth-form__error" role="alert">
+          {oauthError}
+        </p>
+      )}
+
       <form className="auth-form" onSubmit={onSubmit}>
         <label className="auth-form__field">
           <span>Електронна пошта</span>
@@ -115,6 +128,14 @@ export function LoginPage() {
               : "Зареєструватися"}
         </button>
       </form>
+
+      <hr className="auth-divider" />
+
+      {/* Посилання, а не fetch: вхід через Google — це перехід браузера
+          на сторінку згоди accounts.google.com і назад. */}
+      <a href="/api/auth/google" className="button button--ghost auth-google">
+        Увійти через Google
+      </a>
     </section>
   );
 }

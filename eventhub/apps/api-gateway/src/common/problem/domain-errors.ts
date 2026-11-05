@@ -96,3 +96,51 @@ export class InvalidRefreshToken extends DomainError {
     super("Увійдіть у систему заново");
   }
 }
+
+export class Forbidden extends DomainError {
+  constructor() {
+    super("Ваша роль не дозволяє виконати цю дію");
+  }
+}
+
+export class VenueNotFound extends DomainError {
+  constructor(readonly venueId: string) {
+    super(`Майданчик ${venueId} не знайдено`);
+  }
+}
+
+export class UserNotFound extends DomainError {
+  constructor(readonly userId: string) {
+    super(`Користувача ${userId} не знайдено`);
+  }
+}
+
+export class GoogleAuthNotConfigured extends DomainError {
+  constructor() {
+    super("Вхід через Google не налаштовано на сервері (відсутні GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)");
+  }
+}
+
+export class OAuthStateMismatch extends DomainError {
+  constructor() {
+    super("Сеанс входу через Google недійсний або було натиснуто «Скасувати»");
+  }
+}
+
+export class OAuthEmailNotVerified extends DomainError {
+  constructor() {
+    super("Електронну пошту в обліковому записі Google не підтверджено");
+  }
+}
+
+export class AccountExistsWithPassword extends DomainError {
+  constructor() {
+    super("Ця пошта вже зареєстрована з паролем. Увійдіть за паролем і прив'яжіть Google в особистому кабінеті");
+  }
+}
+
+export class OAuthAccountAlreadyLinked extends DomainError {
+  constructor() {
+    super("Цей обліковий запис Google вже прив'язано до іншого користувача");
+  }
+}

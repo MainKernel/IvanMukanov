@@ -441,6 +441,174 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthenticated"
 
+  /auth/google:
+    get:
+      operationId: googleAuthStart
+      summary: Початок входу через Google (OpenID Connect + PKCE + state + nonce)
+      tags: [auth]
+      responses:
+        "302":
+          description: Перенаправлення на сторінку згоди Google або на /login?oauthError=...
+
+  /auth/google/link:
+    post:
+      operationId: prepareGoogleLink
+      summary: Підготовка явного прив'язування Google-акаунта з особистого кабінету (ДЗ ЛР №6)
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: URL для переходу на Google OAuth у режимі прив'язування
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoogleLinkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /auth/google/callback:
+    get:
+      operationId: googleAuthCallback
+      summary: Завершення входу або прив'язування через Google (перевірка state, PKCE, id_token, nonce)
+      tags: [auth]
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema: { type: string }
+        - name: state
+          in: query
+          required: false
+          schema: { type: string }
+        - name: error
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "302":
+          description: Перенаправлення на /me (успіх) або /login?oauthError=... (відмова)
+
+  # ============================================================================
+  # КАБІНЕТ ОРГАНІЗАТОРА ТА АДМІНІСТРУВАННЯ (Лабораторна робота №6 + ДЗ №3)
+  # ============================================================================
+  /organizer/events:
+    get:
+      operationId: listOrganizerEvents
+      summary: Список подій поточного організатора (або всіх подій для ADMIN)
+      tags: [organizer]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Події організатора
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerEventList"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createOrganizerEvent
+      summary: Створити нову подію (власник береться виключно з токена)
+      tags: [organizer]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Подію створено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/VenueNotFound"
+
+  /organizer/events/{eventId}:
+    patch:
+      operationId: updateOrganizerEvent
+      summary: Оновити власну подію (чужа подія повертає 404, а не 403)
+      tags: [organizer]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Подію оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/VenueNotFound"
+
+  /admin/users/{userId}/role:
+    patch:
+      operationId: updateUserRole
+      summary: Зміна ролі користувача адміністратором (ДЗ ЛР №6)
+      tags: [admin]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRoleRequest"
+      responses:
+        "200":
+          description: Роль користувача оновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -530,10 +698,52 @@ components:
       type: object
       required: [id, email, role, createdAt]
       properties:
-        id:        { type: string, format: uuid }
-        email:     { type: string, format: email, maxLength: 254 }
-        role:      { $ref: "#/components/schemas/Role" }
-        createdAt: { type: string, format: date-time }
+        id:           { type: string, format: uuid }
+        email:        { type: string, format: email, maxLength: 254 }
+        role:         { $ref: "#/components/schemas/Role" }
+        createdAt:    { type: string, format: date-time }
+        googleLinked: { type: boolean }
+
+    GoogleLinkResponse:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+
+    OrganizerEventList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Event" }
+
+    CreateEventRequest:
+      type: object
+      required: [title, startsAt, venueId, minPriceCents]
+      properties:
+        title:          { type: string, minLength: 1, maxLength: 200 }
+        description:    { type: string, maxLength: 2000 }
+        startsAt:       { type: string, format: date-time }
+        venueId:        { type: string, format: uuid }
+        minPriceCents:  { type: integer, minimum: 0 }
+        availableSeats: { type: integer, minimum: 0, default: 80 }
+
+    UpdateEventRequest:
+      type: object
+      properties:
+        title:          { type: string, minLength: 1, maxLength: 200 }
+        description:    { type: string, maxLength: 2000 }
+        startsAt:       { type: string, format: date-time }
+        venueId:        { type: string, format: uuid }
+        minPriceCents:  { type: integer, minimum: 0 }
+        availableSeats: { type: integer, minimum: 0 }
+
+    UpdateUserRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
 
     RegisterRequest:
       type: object
@@ -713,3 +923,16 @@ components:
                 title: Ця пошта вже зареєстрована
                 status: 409
                 detail: "Спробуйте увійти або вкажіть іншу адресу електронної пошти"
+
+    VenueNotFound:
+      description: Майданчик, вказаний у тілі запиту, не існує
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            venueNotFound:
+              value:
+                type: /errors/venue-not-found
+                title: Майданчик не знайдено
+                status: 422
+                detail: "Вказаний venueId не існує в базі даних"

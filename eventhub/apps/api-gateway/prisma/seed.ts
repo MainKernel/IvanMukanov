@@ -18,6 +18,9 @@ function deterministicUuid(seed: string): string {
   return `${p1}-${p2}-${p3}-${p4}-${p5}`;
 }
 
+const ORGANIZER_1_ID = "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22";
+const ORGANIZER_2_ID = "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e33";
+
 const VENUES = [
   {
     id: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
@@ -46,6 +49,7 @@ const VENUES = [
   },
 ];
 
+// Перші 5 подій належать organizer@example.com, решта 5 — organizer2@example.com
 const EVENTS = [
   {
     id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
@@ -57,6 +61,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
+    organizerId: ORGANIZER_1_ID,
   },
   // Дві події на 19.10 починаються в ту саму секунду — перевірка вторинного ключа у курсорі (ADR-0001)
   {
@@ -68,6 +73,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e01",
+    organizerId: ORGANIZER_1_ID,
   },
   {
     id: "018f2c1e-5b8c-7d4e-8f2a-3b6c7d8e9f01",
@@ -78,6 +84,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e02",
+    organizerId: ORGANIZER_1_ID,
   },
   // 2 події у Львові (venueId ...8e03)
   {
@@ -89,6 +96,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e03",
+    organizerId: ORGANIZER_1_ID,
   },
   {
     id: "018f2c1e-6c9d-7e5f-9a3b-4c7d8e9f0a03",
@@ -99,7 +107,9 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e04",
+    organizerId: ORGANIZER_1_ID,
   },
+  // Події другого організатора (organizer2@example.com)
   {
     id: "018f2c1e-7d0e-7f6a-8b4c-5d8e9f0a1b04",
     title: "Нічний органно-електронний перформанс",
@@ -109,6 +119,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
+    organizerId: ORGANIZER_2_ID,
   },
   {
     id: "018f2c1e-8e1f-707b-9c5d-6e9f0a1b2c05",
@@ -119,6 +130,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e03",
+    organizerId: ORGANIZER_2_ID,
   },
   {
     id: "018f2c1e-9f20-718c-ad6e-7f0a1b2c3d06",
@@ -129,9 +141,10 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
+    organizerId: ORGANIZER_2_ID,
   },
   {
-    id: "018f2c1e-a031-729d-be7f-801b2c3d4e07",
+    id: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea8",
     title: "Новорічний стендап-марафон",
     description: "Підбиття підсумків року від провідних коміків",
     startsAt: new Date("2026-12-30T19:30:00.000Z"),
@@ -139,6 +152,7 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e02",
+    organizerId: ORGANIZER_2_ID,
   },
   {
     id: "018f2c1e-b142-73ae-cf80-912c3d4e5f08",
@@ -149,12 +163,64 @@ const EVENTS = [
     currency: "UAH",
     availableSeats: 80,
     venueId: "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
+    organizerId: ORGANIZER_2_ID,
   },
 ];
 
 const ROWS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 async function main() {
+  console.log("Seeding users first (events reference organizerId)...");
+  const demoPasswordHash = await argon2.hash("eventhub-demo-2026", {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+  });
+
+  const USERS = [
+    {
+      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
+      email: "student@example.com",
+      passwordHash: demoPasswordHash,
+      emailVerified: false,
+      role: Role.USER,
+    },
+    {
+      id: ORGANIZER_1_ID,
+      email: "organizer@example.com",
+      passwordHash: demoPasswordHash,
+      emailVerified: false,
+      role: Role.ORGANIZER,
+    },
+    {
+      id: ORGANIZER_2_ID,
+      email: "organizer2@example.com",
+      passwordHash: demoPasswordHash,
+      emailVerified: false,
+      role: Role.ORGANIZER,
+    },
+    {
+      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e44",
+      email: "admin@example.com",
+      passwordHash: demoPasswordHash,
+      emailVerified: false,
+      role: Role.ADMIN,
+    },
+  ];
+
+  for (const u of USERS) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        id: u.id,
+        passwordHash: u.passwordHash,
+        emailVerified: u.emailVerified,
+        role: u.role,
+      },
+      create: u,
+    });
+  }
+
   console.log("Seeding venues...");
   for (const v of VENUES) {
     await prisma.venue.upsert({
@@ -164,7 +230,12 @@ async function main() {
     });
   }
 
-  console.log("Seeding events (10 events)...");
+  console.log("Seeding events (10 events: 5 for organizer, 5 for organizer2)...");
+  // Прибираємо застарілий ідентифікатор 9-ї події з попередніх робіт, якщо він залишився
+  await prisma.event.deleteMany({
+    where: { id: "018f2c1e-a031-729d-be7f-801b2c3d4e07" },
+  });
+
   for (const e of EVENTS) {
     await prisma.event.upsert({
       where: { id: e.id },
@@ -211,36 +282,7 @@ async function main() {
     data: seatsData,
   });
 
-  console.log("Seeding demo users and orders...");
-  const demoPasswordHash = await argon2.hash("eventhub-demo-2026", {
-    type: argon2.argon2id,
-    memoryCost: 65536,
-    timeCost: 3,
-  });
-
-  const USERS = [
-    {
-      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
-      email: "student@example.com",
-      passwordHash: demoPasswordHash,
-      role: Role.USER,
-    },
-    {
-      id: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22",
-      email: "other@example.com",
-      passwordHash: demoPasswordHash,
-      role: Role.USER,
-    },
-  ];
-
-  for (const u of USERS) {
-    await prisma.user.upsert({
-      where: { id: u.id },
-      update: { email: u.email, passwordHash: u.passwordHash, role: u.role },
-      create: u,
-    });
-  }
-
+  console.log("Seeding demo orders...");
   const ORDERS = [
     {
       id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55",
@@ -254,7 +296,7 @@ async function main() {
     },
     {
       id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e66",
-      userId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22",
+      userId: ORGANIZER_1_ID,
       eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0",
       quantity: 1,
       totalCents: 18000,
@@ -276,10 +318,9 @@ async function main() {
   const eventCount = await prisma.event.count();
   const seatCount = await prisma.seat.count();
   const userCount = await prisma.user.count();
-  const orderCount = await prisma.order.count();
 
   console.log(
-    `✓ Seed completed: ${venueCount} venues, ${eventCount} events, ${seatCount} seats, ${userCount} users, ${orderCount} orders.`,
+    `Створено ${venueCount} майданчиків, ${eventCount} подій, ${seatCount} місць, ${userCount} користувачі`,
   );
 }
 

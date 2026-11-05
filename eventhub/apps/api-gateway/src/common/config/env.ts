@@ -23,6 +23,14 @@ const envSchema = z.object({
     .min(32, "JWT_ACCESS_SECRET: щонайменше 32 символи"),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(1).default(900),
   REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
+  // ЛР №6: параметри OpenID Connect для входу через Google.
+  // Якщо порожні — застосунок стартує і при спробі входу через Google
+  // коректно повідомляє, що провайдер не налаштовано.
+  GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .default("http://localhost:5173/api/auth/google/callback"),
 });
 
 export type Env = z.infer<typeof envSchema>;

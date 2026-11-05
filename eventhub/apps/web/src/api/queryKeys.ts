@@ -5,7 +5,7 @@ import type { CatalogFilters } from "./queries";
  *
  * Спільний префікс ["events"] у списку й у деталях — навмисний:
  * одна інвалідація eventKeys.all накриє обидва (після бронювання
- * зміниться кількість місць і в списку, і на сторінці події).
+ * зміниться кількість місць і в списку, і вона ж на сторінці події).
  *
  * Правило: усе, що використовується всередині queryFn, має бути в queryKey.
  */
@@ -25,4 +25,8 @@ export const favoriteKeys = {
 
 export const authKeys = {
   me: ["auth", "me"] as const,
+};
+
+export const organizerKeys = {
+  all: ["organizer", "events"] as const,
 };

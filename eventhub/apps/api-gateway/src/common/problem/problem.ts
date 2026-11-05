@@ -1,19 +1,27 @@
 import { HttpException } from "@nestjs/common";
 import type { Problem } from "@eventhub/contracts";
 import {
+  AccountExistsWithPassword,
   EmailTaken,
   EventCancelledError,
   EventNotFound,
   FavoritesUnavailable,
+  Forbidden,
   ForbiddenOrderAccess,
+  GoogleAuthNotConfigured,
   InvalidCredentials,
   InvalidCursor,
   InvalidRefreshToken,
+  OAuthAccountAlreadyLinked,
+  OAuthEmailNotVerified,
+  OAuthStateMismatch,
   OrderAlreadyCancelled,
   OrderNotFound,
   RequestValidationFailed,
   SeatAlreadyHeld,
   Unauthenticated,
+  UserNotFound,
+  VenueNotFound,
 } from "./domain-errors";
 
 export interface ProblemBody extends Problem {
@@ -40,6 +48,15 @@ export function toProblem(err: unknown): ProblemBody {
     };
   }
 
+  if (err instanceof Forbidden) {
+    return {
+      type: "/errors/forbidden",
+      title: "Недостатньо прав доступу",
+      status: 403,
+      detail: err.message,
+    };
+  }
+
   if (err instanceof ForbiddenOrderAccess) {
     return {
       type: "/errors/forbidden-order-access",
@@ -62,6 +79,15 @@ export function toProblem(err: unknown): ProblemBody {
     return {
       type: "/errors/order-not-found",
       title: "Замовлення не знайдено",
+      status: 404,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof UserNotFound) {
+    return {
+      type: "/errors/user-not-found",
+      title: "Користувача не знайдено",
       status: 404,
       detail: err.message,
     };
@@ -94,10 +120,28 @@ export function toProblem(err: unknown): ProblemBody {
     };
   }
 
+  if (err instanceof VenueNotFound) {
+    return {
+      type: "/errors/venue-not-found",
+      title: "Майданчик не знайдено",
+      status: 422,
+      detail: err.message,
+    };
+  }
+
   if (err instanceof FavoritesUnavailable) {
     return {
       type: "/errors/favorites-unavailable",
       title: "Не вдалося оновити обране",
+      status: 503,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof GoogleAuthNotConfigured) {
+    return {
+      type: "/errors/google-not-configured",
+      title: "Вхід через Google не налаштовано",
       status: 503,
       detail: err.message,
     };
@@ -108,6 +152,42 @@ export function toProblem(err: unknown): ProblemBody {
       type: "/errors/email-taken",
       title: "Ця пошта вже зареєстрована",
       status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof AccountExistsWithPassword) {
+    return {
+      type: "/errors/account-exists-with-password",
+      title: "Ця пошта вже зареєстрована з паролем",
+      status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OAuthAccountAlreadyLinked) {
+    return {
+      type: "/errors/oauth-already-linked",
+      title: "Обліковий запис Google вже прив'язано",
+      status: 409,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OAuthEmailNotVerified) {
+    return {
+      type: "/errors/oauth-email-not-verified",
+      title: "Пошта Google не підтверджена",
+      status: 403,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof OAuthStateMismatch) {
+    return {
+      type: "/errors/oauth-state-mismatch",
+      title: "Сеанс входу недійсний",
+      status: 401,
       detail: err.message,
     };
   }

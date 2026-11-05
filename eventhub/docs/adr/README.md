@@ -33,3 +33,4 @@
 | 0003 | [Схема каталогу в PostgreSQL, складений індекс пагінації та ізоляція Prisma-моделі](0003-postgresql-catalog-and-indexing.md) | Прийнято |
 | 0004 | [Серверний стан на фронтенді через TanStack Query і вибір staleTime](0004-tanstack-query-stale-time.md) | Прийнято |
 | 0005 | [Зберігання access-токена в оперативній пам'яті клієнта та робота з кількома вкладками](0005-access-token-in-memory.md) | Прийнято |
+| 0006 | [Правило вибору між 403 Forbidden, 404 Not Found та 422 Unprocessable Content в API EventHub](0006-when-403-vs-404.md) | Прийнято |

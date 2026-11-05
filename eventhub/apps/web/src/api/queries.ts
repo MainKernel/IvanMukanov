@@ -1,11 +1,15 @@
 import type {
   AuthResponse,
+  CreateEventRequest,
   Event,
   EventPage,
   FavoriteList,
+  GoogleLinkResponse,
   LoginRequest,
+  OrganizerEventList,
   Problem,
   RegisterRequest,
+  UpdateEventRequest,
   UserDto,
 } from "@eventhub/contracts";
 import { api, getAccessToken, refreshAccessToken, setAccessToken } from "./client";
@@ -114,6 +118,56 @@ export async function logoutAllDevices(): Promise<void> {
   const { error } = await api.POST("/auth/logout-all");
   if (error) throw error;
   setAccessToken(null);
+}
+
+export async function prepareGoogleLink(): Promise<GoogleLinkResponse> {
+  const { data, error } = await api.POST("/auth/google/link");
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchOrganizerEvents(): Promise<OrganizerEventList> {
+  const { data, error } = await api.GET("/organizer/events");
+  if (error) throw error;
+  return data;
+}
+
+export async function createOrganizerEvent(
+  body: CreateEventRequest,
+): Promise<Event> {
+  const { data, error } = await api.POST("/organizer/events", { body });
+  if (error) throw error;
+  return data;
+}
+
+export async function updateOrganizerEvent(
+  eventId: string,
+  body: UpdateEventRequest,
+): Promise<Event> {
+  const { data, error } = await api.PATCH("/organizer/events/{eventId}", {
+    params: { path: { eventId } },
+    body,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export function oauthErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "google-not-configured":
+      return "Вхід через Google не налаштовано на сервері (відсутні облікові дані GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).";
+    case "oauth-state-mismatch":
+      return "Сеанс входу через Google скасовано або недійсний. Спробуйте ще раз.";
+    case "account-exists-with-password":
+      return "Ця пошта вже зареєстрована з паролем. Увійдіть за паролем і натисніть «Прив'язати Google» в особистому кабінеті.";
+    case "oauth-email-not-verified":
+      return "Електронна пошта у вашому обліковому записі Google не підтверджена.";
+    case "oauth-already-linked":
+      return "Цей обліковий запис Google вже прив'язано до іншого користувача.";
+    default:
+      return "Не вдалося виконати вхід через Google.";
+  }
 }
 
 /**

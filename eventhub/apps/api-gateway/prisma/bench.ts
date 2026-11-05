@@ -12,9 +12,11 @@ const SEED_EVENT_IDS = [
   "018f2c1e-7d0e-7f6a-8b4c-5d8e9f0a1b04",
   "018f2c1e-8e1f-707b-9c5d-6e9f0a1b2c05",
   "018f2c1e-9f20-718c-ad6e-7f0a1b2c3d06",
-  "018f2c1e-a031-729d-be7f-801b2c3d4e07",
+  "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea8",
   "018f2c1e-b142-73ae-cf80-912c3d4e5f08",
 ];
+
+const DEFAULT_ORGANIZER_ID = "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e22";
 
 const VENUE_IDS = [
   "018f2c1e-0000-7c3d-9e1f-2a5b6c7d8e00",
@@ -54,6 +56,7 @@ async function main() {
         currency: "UAH",
         availableSeats: 80,
         venueId: VENUE_IDS[idx % VENUE_IDS.length]!,
+        organizerId: DEFAULT_ORGANIZER_ID,
       };
     });
 

@@ -4,7 +4,10 @@ import { EventPage } from "./features/catalog/EventPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { MePage } from "./features/auth/MePage";
 import { RequireAuth } from "./features/auth/RequireAuth";
+import { RequireRole } from "./features/auth/RequireRole";
 import { useCurrentUser, useLogout } from "./features/auth/useAuth";
+import { OrganizerEventsPage } from "./features/organizer/OrganizerEventsPage";
+import { OrganizerEventEditPage } from "./features/organizer/OrganizerEventEditPage";
 
 export function App() {
   const { data: user } = useCurrentUser();
@@ -16,6 +19,9 @@ export function App() {
       onSettled: () => navigate("/"),
     });
   };
+
+  const isOrganizerOrAdmin =
+    user?.role === "ORGANIZER" || user?.role === "ADMIN";
 
   return (
     <main className="page">
@@ -32,6 +38,11 @@ export function App() {
         <nav className="page__auth" aria-label="Обліковий запис">
           {user ? (
             <>
+              {isOrganizerOrAdmin && (
+                <Link to="/organizer" className="button button--ghost">
+                  Кабінет організатора
+                </Link>
+              )}
               <Link to="/me" className="page__user">
                 {user.email}
               </Link>
@@ -62,6 +73,22 @@ export function App() {
             <RequireAuth>
               <MePage />
             </RequireAuth>
+          }
+        />
+        <Route
+          path="/organizer"
+          element={
+            <RequireRole roles={["ORGANIZER", "ADMIN"]}>
+              <OrganizerEventsPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/organizer/events/:eventId"
+          element={
+            <RequireRole roles={["ORGANIZER", "ADMIN"]}>
+              <OrganizerEventEditPage />
+            </RequireRole>
           }
         />
       </Routes>

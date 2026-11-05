@@ -24,3 +24,9 @@ export type RegisterRequest = components["schemas"]["RegisterRequest"];
 export type LoginRequest = components["schemas"]["LoginRequest"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
 export type RefreshResponse = components["schemas"]["RefreshResponse"];
+export type GoogleLinkResponse = components["schemas"]["GoogleLinkResponse"];
+export type OrganizerEventList = components["schemas"]["OrganizerEventList"];
+export type CreateEventRequest = components["schemas"]["CreateEventRequest"];
+export type UpdateEventRequest = components["schemas"]["UpdateEventRequest"];
+export type UpdateUserRoleRequest =
+  components["schemas"]["UpdateUserRoleRequest"];

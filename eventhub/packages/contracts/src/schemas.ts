@@ -64,6 +64,42 @@ export const favoriteEventIdParam = z.object({
 });
 export type FavoriteEventIdParam = z.infer<typeof favoriteEventIdParam>;
 
+// ЛР №6: Схеми для кабінету організатора (organizerId в тілі НЕ оголошується —
+// будь-яке передане значення буде автоматично відкинуте Zod, власник береться з токена).
+export const createEventBody = z.object({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2000).optional(),
+  startsAt: z.string().datetime(),
+  venueId: uuidLike,
+  minPriceCents: z.coerce.number().int().min(0),
+  availableSeats: z.coerce.number().int().min(0).default(80),
+});
+export type CreateEventBody = z.infer<typeof createEventBody>;
+
+export const updateEventBody = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(2000).optional(),
+    startsAt: z.string().datetime().optional(),
+    venueId: uuidLike.optional(),
+    minPriceCents: z.coerce.number().int().min(0).optional(),
+    availableSeats: z.coerce.number().int().min(0).optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, {
+    message: "Потрібно передати щонайменше одне поле для оновлення",
+  });
+export type UpdateEventBody = z.infer<typeof updateEventBody>;
+
+export const userIdParam = z.object({
+  userId: uuidLike,
+});
+export type UserIdParam = z.infer<typeof userIdParam>;
+
+export const updateUserRoleBody = z.object({
+  role: z.enum(["USER", "ORGANIZER", "ADMIN"]),
+});
+export type UpdateUserRoleBody = z.infer<typeof updateUserRoleBody>;
+
 // ============================================================================
 // Тип-рівнева перевірка узгодженості Zod-схем зі згенерованими типами OpenAPI
 // (Частина рішення ADR-0002: якщо в openapi.yaml зміниться набір полів або їхні
@@ -81,6 +117,11 @@ type OpenApiFavoriteEventIdParam =
   paths["/favorites/{eventId}"]["parameters"]["path"];
 type OpenApiRegisterBody = components["schemas"]["RegisterRequest"];
 type OpenApiLoginBody = components["schemas"]["LoginRequest"];
+type OpenApiCreateEventBody = components["schemas"]["CreateEventRequest"];
+type OpenApiUpdateEventBody = components["schemas"]["UpdateEventRequest"];
+type OpenApiUserIdParam =
+  paths["/admin/users/{userId}/role"]["patch"]["parameters"]["path"];
+type OpenApiUpdateUserRoleBody = components["schemas"]["UpdateUserRoleRequest"];
 
 type AssertStructuralMatch<TZod, TOpenApi> =
   TZod extends TOpenApi
@@ -121,6 +162,22 @@ const _assertLoginBody: AssertStructuralMatch<
   LoginBody,
   OpenApiLoginBody
 > = true;
+const _assertCreateEventBody: AssertStructuralMatch<
+  CreateEventBody,
+  OpenApiCreateEventBody
+> = true;
+const _assertUpdateEventBody: AssertStructuralMatch<
+  UpdateEventBody,
+  OpenApiUpdateEventBody
+> = true;
+const _assertUserIdParam: AssertStructuralMatch<
+  UserIdParam,
+  OpenApiUserIdParam
+> = true;
+const _assertUpdateUserRoleBody: AssertStructuralMatch<
+  UpdateUserRoleBody,
+  OpenApiUpdateUserRoleBody
+> = true;
 
 void _assertListEventsQuery;
 void _assertEventIdParam;
@@ -130,3 +187,7 @@ void _assertCancelOrderQuery;
 void _assertFavoriteEventIdParam;
 void _assertRegisterBody;
 void _assertLoginBody;
+void _assertCreateEventBody;
+void _assertUpdateEventBody;
+void _assertUserIdParam;
+void _assertUpdateUserRoleBody;
