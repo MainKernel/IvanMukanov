@@ -124,6 +124,25 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /events/{eventId}/seats:
+    get:
+      operationId: listSeats
+      summary: Карта місць події
+      tags: [catalog]
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Місця події
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SeatMap" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # ============================================================================
   # ОБРАНЕ (Домашнє завдання ЛР №4)
   #
@@ -182,90 +201,78 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
 
   # ============================================================================
-  # ЗАМОВЛЕННЯ (Домашнє завдання ЛР №2)
-  #
-  # Письмове обґрунтування вибору HTTP-кодів помилок:
-  #
-  # 1. Місце вже утримує інший покупець (або вільних місць зараз недостатньо):
-  #    -> 409 Conflict (#/components/responses/OrderConflict).
-  #    Чому 409: Запит синтаксично коректний і клієнт має право купувати квитки,
-  #    але операція конфліктує з поточним динамічним станом ресурсу (місце
-  #    тимчасово заблоковане іншим покупцем на час резерву).
-  #    Чи має сенс повторити запит через хвилину? ТАК: якщо інший покупець
-  #    не завершить оплату або скасує бронь, місце звільниться і повторний
-  #    запит пройде успішно.
-  #
-  # 2. Подія скасована організатором:
-  #    -> 422 Unprocessable Content (#/components/responses/EventCancelled).
-  #    Чому 422: Формат і типи полів запиту валідні (тому не 400), ресурс події
-  #    існує (тому не 404), але бізнес-правило домену забороняє створювати
-  #    замовлення на подію в термінальному стані "cancelled".
-  #    Чи має сенс повторити запит через хвилину? НІ: скасування події є
-  #    незворотним бізнес-рішенням, повтор запиту нічого не змінить.
-  #
-  # 3. Користувач намагається скасувати чуже замовлення:
-  #    -> 403 Forbidden (#/components/responses/Forbidden).
-  #    Чому 403: Сервер розуміє, хто робить запит (buyerId відомий), але цей
-  #    суб'єкт не є власником замовлення й не має повноважень на його зміну.
-  #    Чи має сенс повторити запит через хвилину? НІ: без зміни облікового
-  #    запису / прав доступу повтор того самого запиту завжди повертатиме 403.
-  #
-  # Чим ці три випадки відрізняються з погляду клієнта (фронтенду):
-  # - При 409 клієнту варто запропонувати кнопку «Спробувати ще раз» або оновити
-  #   схему залу.
-  # - При 422 кнопку покупки треба заблокувати й показати плашку «Подію скасовано».
-  # - При 403 показати повідомлення про відсутність прав доступу без ретраїв.
+  # ЗАМОВЛЕННЯ (Лабораторна робота №7: резерв місць із TTL, ідемпотентність,
+  # скасування у транзакції)
   # ============================================================================
   /orders:
+    get:
+      operationId: listMyOrders
+      summary: Замовлення поточного користувача
+      tags: [orders]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Список замовлень, найновіші першими
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
     post:
       operationId: createOrder
-      summary: Створити замовлення на подію
+      summary: Створити замовлення й зарезервувати місця
       tags: [orders]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, minLength: 8, maxLength: 200 }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrderRequest"
-            examples:
-              default:
-                summary: Замовлення двох квитків
-                value:
-                  eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                  buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
-                  quantity: 2
+            schema: { $ref: "#/components/schemas/CreateOrderRequest" }
       responses:
-        "201":
-          description: Замовлення створено
+        "200":
+          description: Повтор із тим самим Idempotency-Key – наявне замовлення
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Order"
-              examples:
-                created:
-                  summary: Нове замовлення в очікуванні оплати
-                  value:
-                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
-                    quantity: 2
-                    total: { amount: 50000, currency: UAH }
-                    status: pending
-                    createdAt: "2026-10-01T12:00:00Z"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Order" }
+        "201":
+          description: Замовлення створено, місця зарезервовано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          $ref: "#/components/responses/OrderConflict"
+          description: Хоча б одне місце вже зайняте
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                seatsUnavailable:
+                  value:
+                    type: /errors/seats-unavailable
+                    title: Місця вже зайняті
+                    status: 409
+                    seatIds: [018f2c1e-5000-7c3d-9e1f-000000000001]
         "422":
-          $ref: "#/components/responses/EventCancelled"
+          description: Ключ ідемпотентності вже використано з іншим тілом запиту
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /orders/{orderId}:
     get:
       operationId: getOrder
-      summary: Переглянути замовлення за ідентифікатором
+      summary: Переглянути замовлення за ідентифікатором (чуже замовлення -> 404, не 403)
       tags: [orders]
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: orderId
           in: path
@@ -276,66 +283,42 @@ paths:
           description: Деталі замовлення
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Order"
-              examples:
-                default:
-                  value:
-                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
-                    quantity: 2
-                    total: { amount: 50000, currency: UAH }
-                    status: pending
-                    createdAt: "2026-10-01T12:00:00Z"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthenticated"
-        "404":
-          # Чуже замовлення також повертає 404, а не 403 (ДЗ ЛР №5),
-          # щоб не видавати сам факт існування чужого замовлення.
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Order" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
-    delete:
+  /orders/{orderId}/cancel:
+    post:
       operationId: cancelOrder
-      summary: Скасувати замовлення
+      summary: Скасувати замовлення й повернути місця у вільний продаж (лише зі стану PENDING)
       tags: [orders]
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: orderId
           in: path
           required: true
           schema: { type: string, format: uuid }
-        - name: buyerId
-          in: query
-          required: true
-          description: Ідентифікатор покупця, який ініціює скасування (до появи повноцінної JWT-автентифікації)
-          schema: { type: string, format: uuid }
       responses:
         "200":
-          description: Замовлення скасовано
+          description: Замовлення скасовано, місця звільнено
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Order"
-              examples:
-                cancelled:
-                  value:
-                    id: 018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55
-                    eventId: 018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f
-                    buyerId: 018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11
-                    quantity: 2
-                    total: { amount: 50000, currency: UAH }
-                    status: cancelled
-                    createdAt: "2026-10-01T12:00:00Z"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Order" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          $ref: "#/components/responses/OrderConflict"
+          description: Замовлення вже не перебуває у стані PENDING
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                orderStateConflict:
+                  value:
+                    type: /errors/order-state
+                    title: Замовлення вже не очікує оплати
+                    status: 409
 
   # ============================================================================
   # АВТЕНТИФІКАЦІЯ (Лабораторна робота №5 + ДЗ №1)
@@ -665,30 +648,71 @@ components:
           type: array
           items: { type: string, format: uuid }
 
-    CreateOrderRequest:
+    Seat:
       type: object
-      required: [eventId, buyerId, quantity]
+      required: [id, rowLabel, number, price, available]
       properties:
-        eventId:  { type: string, format: uuid }
-        buyerId:  { type: string, format: uuid }
-        quantity: { type: integer, minimum: 1, maximum: 10 }
+        id:       { type: string, format: uuid }
+        rowLabel: { type: string }
+        number:   { type: integer, minimum: 1 }
+        price:    { $ref: "#/components/schemas/Money" }
+        available:
+          type: boolean
+          description: >
+            Чи можна зараз це місце замовити. Внутрішні стани (FREE, HELD,
+            SOLD) назовні не віддаємо.
+
+    SeatMap:
+      type: object
+      required: [eventId, seats]
+      properties:
+        eventId: { type: string, format: uuid }
+        seats:
+          type: array
+          items: { $ref: "#/components/schemas/Seat" }
 
     OrderStatus:
       type: string
-      enum: [pending, cancelled]
+      enum: [PENDING, PAID, CANCELLED, EXPIRED, REFUNDED]
+
+    OrderItem:
+      type: object
+      required: [seatId, rowLabel, number, price]
+      properties:
+        seatId:   { type: string, format: uuid }
+        rowLabel: { type: string }
+        number:   { type: integer }
+        price:    { $ref: "#/components/schemas/Money" }
 
     Order:
       type: object
-      required: [id, userId, eventId, buyerId, quantity, total, status, createdAt]
+      required: [id, eventId, status, total, holdExpiresAt, createdAt, items]
       properties:
-        id:        { type: string, format: uuid }
-        userId:    { type: string, format: uuid }
-        eventId:   { type: string, format: uuid }
-        buyerId:   { type: string, format: uuid }
-        quantity:  { type: integer, minimum: 1, maximum: 10 }
-        total:     { $ref: "#/components/schemas/Money" }
-        status:    { $ref: "#/components/schemas/OrderStatus" }
-        createdAt: { type: string, format: date-time }
+        id:         { type: string, format: uuid }
+        eventId:    { type: string, format: uuid }
+        eventTitle: { type: string }
+        status:     { $ref: "#/components/schemas/OrderStatus" }
+        total:      { $ref: "#/components/schemas/Money" }
+        holdExpiresAt:
+          type: string
+          format: date-time
+          description: Момент, до якого місця зарезервовані
+        createdAt:  { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+
+    CreateOrderRequest:
+      type: object
+      required: [eventId, seatIds]
+      properties:
+        eventId: { type: string, format: uuid }
+        seatIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
 
     Role:
       type: string
@@ -886,6 +910,19 @@ components:
                 detail: "Перевірте введену пошту та пароль"
 
     Unauthenticated:
+      description: Відсутній або недійсний access-токен
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            unauthenticated:
+              value:
+                type: /errors/unauthenticated
+                title: Потрібна автентифікація
+                status: 401
+                detail: "Надайте дійсний Bearer-токен у заголовку Authorization"
+
+    Unauthorized:
       description: Відсутній або недійсний access-токен
       content:
         application/problem+json:

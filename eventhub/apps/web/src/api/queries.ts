@@ -1,14 +1,17 @@
 import type {
   AuthResponse,
   CreateEventRequest,
+  CreateOrderRequest,
   Event,
   EventPage,
   FavoriteList,
   GoogleLinkResponse,
   LoginRequest,
+  Order,
   OrganizerEventList,
   Problem,
   RegisterRequest,
+  SeatMap,
   UpdateEventRequest,
   UserDto,
 } from "@eventhub/contracts";
@@ -56,6 +59,60 @@ export async function fetchEvent(eventId: string): Promise<Event> {
     params: { path: { eventId } },
   });
 
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchSeatMap(eventId: string): Promise<SeatMap> {
+  const { data, error } = await api.GET("/events/{eventId}/seats", {
+    params: { path: { eventId } },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export interface CreateOrderWithIdempotency extends CreateOrderRequest {
+  idempotencyKey: string;
+}
+
+export async function createOrder(
+  input: CreateOrderWithIdempotency,
+): Promise<Order> {
+  const { data, error } = await api.POST("/orders", {
+    params: {
+      header: {
+        "Idempotency-Key": input.idempotencyKey,
+      },
+    },
+    body: {
+      eventId: input.eventId,
+      seatIds: input.seatIds,
+    },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchMyOrders(): Promise<Order[]> {
+  const { data, error } = await api.GET("/orders");
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchOrder(orderId: string): Promise<Order> {
+  const { data, error } = await api.GET("/orders/{orderId}", {
+    params: { path: { orderId } },
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function cancelOrder(orderId: string): Promise<Order> {
+  const { data, error } = await api.POST("/orders/{orderId}/cancel", {
+    params: { path: { orderId } },
+  });
   if (error) throw error;
   return data;
 }

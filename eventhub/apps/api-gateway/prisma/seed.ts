@@ -1,4 +1,4 @@
-import { OrderStatus, PrismaClient, Role, SeatStatus } from "@prisma/client";
+import { PrismaClient, Role, SeatStatus } from "@prisma/client";
 import * as argon2 from "argon2";
 import { createHash } from "node:crypto";
 
@@ -170,6 +170,9 @@ const EVENTS = [
 const ROWS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 async function main() {
+  // Порядок важливий: спершу замовлення, потім місця.
+  const removedOrders = await prisma.order.deleteMany({});
+
   console.log("Seeding users first (events reference organizerId)...");
   const demoPasswordHash = await argon2.hash("eventhub-demo-2026", {
     type: argon2.argon2id,
@@ -282,45 +285,13 @@ async function main() {
     data: seatsData,
   });
 
-  console.log("Seeding demo orders...");
-  const ORDERS = [
-    {
-      id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e55",
-      userId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
-      eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
-      quantity: 2,
-      totalCents: 50000,
-      currency: "UAH",
-      status: OrderStatus.PENDING,
-      createdAt: new Date("2026-10-01T12:00:00.000Z"),
-    },
-    {
-      id: "018f2c1e-7777-7c3d-9e1f-2a5b6c7d8e66",
-      userId: ORGANIZER_1_ID,
-      eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8ea0",
-      quantity: 1,
-      totalCents: 18000,
-      currency: "UAH",
-      status: OrderStatus.PENDING,
-      createdAt: new Date("2026-10-02T12:00:00.000Z"),
-    },
-  ];
-
-  for (const o of ORDERS) {
-    await prisma.order.upsert({
-      where: { id: o.id },
-      update: o,
-      create: o,
-    });
-  }
-
   const venueCount = await prisma.venue.count();
   const eventCount = await prisma.event.count();
   const seatCount = await prisma.seat.count();
   const userCount = await prisma.user.count();
 
   console.log(
-    `Створено ${venueCount} майданчиків, ${eventCount} подій, ${seatCount} місць, ${userCount} користувачі`,
+    `Створено ${venueCount} майданчиків, ${eventCount} подій, ${seatCount} місць, ${userCount} користувачі (видалено замовлень: ${removedOrders.count})`,
   );
 }
 

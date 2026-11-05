@@ -423,3 +423,214 @@ body {
   align-items: center;
   padding: 1rem 1.25rem 1rem 0;
 }
+
+/* ── Тиждень 7: карта місць і сторінка замовлення ────────────────── */
+
+.seat-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.seat-section h3 {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+.seat-stage {
+  margin: 0 auto 1.5rem;
+  padding: 0.5rem 1rem;
+  max-width: 24rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--muted);
+  border-bottom: 2px solid var(--line);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seat-map {
+  display: grid;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.seat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.seat-row__label {
+  width: 1.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+
+.seat-row__seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.seat {
+  width: 2.4rem;
+  height: 2.2rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+}
+
+.seat:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.seat:disabled {
+  background: #e9e7e2;
+  color: var(--muted);
+  border-color: var(--line);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.seat--selected {
+  color: #fff;
+  background: var(--ink);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+.seat--conflict {
+  color: #fff !important;
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  opacity: 1 !important;
+  animation: seat-shake 0.35s ease;
+}
+
+@keyframes seat-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+.seat-legend {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.seat-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.seat-legend__swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+.seat-legend__swatch--selected {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.seat-legend__swatch--taken {
+  background: #e9e7e2;
+}
+
+.seat-legend__swatch--conflict {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.order-bar {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.order-bar__summary {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.order-card {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.order-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.order-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.order-badge--pending {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: #fff5f3;
+}
+
+.order-timer {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--paper);
+  font-weight: 500;
+}
+
+.order-items {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.order-items li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+

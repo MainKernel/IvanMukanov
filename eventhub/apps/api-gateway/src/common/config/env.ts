@@ -31,6 +31,13 @@ const envSchema = z.object({
   GOOGLE_REDIRECT_URI: z
     .string()
     .default("http://localhost:5173/api/auth/google/callback"),
+  // ЛР №7: тривалість резерву місць та параметри фонового прибиральника.
+  ORDER_HOLD_MINUTES: z.coerce.number().int().min(1).default(15),
+  SWEEPER_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+  SWEEPER_BATCH: z.coerce.number().int().min(1).default(200),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,69 +1,121 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import type { CreateOrderBody, Order } from "@eventhub/contracts";
-import { CatalogService } from "../catalog/catalog.service";
-import { OrderRepository } from "./order.repository";
+import type { AuthUser } from "../auth/current-user.decorator";
+import { env } from "../common/config/env";
 import {
-  EventCancelledError,
-  ForbiddenOrderAccess,
-  OrderAlreadyCancelled,
+  IdempotencyKeyReused,
   OrderNotFound,
-  SeatAlreadyHeld,
 } from "../common/problem/domain-errors";
+import { OrdersRepository, type OrderRow } from "./orders.repository";
+
+const UNIQUE_VIOLATION = "P2002";
+
+function isUniqueViolationOn(err: unknown, field: string): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (err.code !== UNIQUE_VIOLATION) return false;
+  const target = err.meta?.["target"];
+  return Array.isArray(target) ? target.includes(field) : target === field;
+}
+
+export function toOrder(row: OrderRow): Order {
+  const currency = row.currency.trim() as "UAH";
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    eventTitle: row.event.title,
+    status: row.status,
+    total: {
+      amount: row.totalCents,
+      currency,
+    },
+    holdExpiresAt: row.holdExpiresAt.toISOString(),
+    createdAt: row.createdAt.toISOString(),
+    items: row.items.map((item) => ({
+      seatId: item.seatId,
+      rowLabel: item.seat.rowLabel,
+      number: item.seat.number,
+      price: {
+        amount: item.priceCents,
+        currency,
+      },
+    })),
+  };
+}
 
 @Injectable()
 export class OrdersService {
-  constructor(
-    private readonly ordersRepo: OrderRepository,
-    private readonly catalog: CatalogService,
-  ) {}
+  constructor(private readonly repo: OrdersRepository) {}
 
-  async create(dto: CreateOrderBody, userId?: string): Promise<Order> {
-    const event = await this.catalog.getOne(dto.eventId);
-
-    if (event.cancelled) {
-      throw new EventCancelledError(event.id);
+  async create(
+    user: AuthUser,
+    body: CreateOrderBody,
+    key: string | undefined,
+  ): Promise<{ order: Order; replayed: boolean }> {
+    if (!key) {
+      const row = await this.repo.createWithHold({
+        userId: user.id,
+        eventId: body.eventId,
+        seatIds: body.seatIds,
+        holdMinutes: env.ORDER_HOLD_MINUTES,
+        idempotencyKey: null,
+      });
+      return { order: toOrder(row), replayed: false };
     }
 
-    if (dto.quantity > event.availableSeats) {
-      throw new SeatAlreadyHeld(event.id, dto.quantity, event.availableSeats);
+    // Швидкий шлях: ключ уже відомий (економія, а не захист від гонки).
+    const known = await this.repo.findByIdempotencyKey(key);
+    if (known) {
+      return { order: this.replay(known, user, body), replayed: true };
     }
 
-    return this.ordersRepo.create({
-      userId: userId ?? dto.buyerId,
-      eventId: event.id,
-      quantity: dto.quantity,
-      totalCents: event.minPrice.amount * dto.quantity,
-      currency: event.minPrice.currency,
-    });
+    try {
+      const row = await this.repo.createWithHold({
+        userId: user.id,
+        eventId: body.eventId,
+        seatIds: body.seatIds,
+        holdMinutes: env.ORDER_HOLD_MINUTES,
+        idempotencyKey: key,
+      });
+      return { order: toOrder(row), replayed: false };
+    } catch (err) {
+      if (!isUniqueViolationOn(err, "idempotencyKey")) throw err;
+
+      const row = await this.repo.findByIdempotencyKey(key);
+      if (!row) throw err;
+      return { order: this.replay(row, user, body), replayed: true };
+    }
   }
 
-  /**
-   * ДЗ ЛР №5 (п. 2): Перегляд замовлення захищено JwtAuthGuard.
-   * Якщо замовлення належить іншому користувачу — повертаємо 404 (OrderNotFound),
-   * а не 403, щоб не розкривати сам факт існування чужого замовлення за ID.
-   */
-  async getOne(orderId: string, currentUserId: string): Promise<Order> {
-    const order = await this.ordersRepo.byId(orderId);
-    if (!order || order.userId.toLowerCase() !== currentUserId.toLowerCase()) {
-      throw new OrderNotFound(orderId);
-    }
-    return order;
+  async listMy(user: AuthUser): Promise<Order[]> {
+    const rows = await this.repo.listByUser(user.id);
+    return rows.map(toOrder);
   }
 
-  async cancel(orderId: string, buyerId: string): Promise<Order> {
-    const order = await this.ordersRepo.byId(orderId);
-    if (!order) {
-      throw new OrderNotFound(orderId);
-    }
+  async getOne(orderId: string, user: AuthUser): Promise<Order> {
+    const row = await this.repo.findByIdForUser(orderId, user.id);
+    if (!row) throw new OrderNotFound(orderId);
+    return toOrder(row);
+  }
 
-    if (order.userId.toLowerCase() !== buyerId.toLowerCase()) {
-      throw new ForbiddenOrderAccess(orderId);
-    }
+  async cancel(orderId: string, user: AuthUser): Promise<Order> {
+    const row = await this.repo.cancel(orderId, user.id);
+    return toOrder(row);
+  }
 
-    if (order.status === "cancelled") {
-      throw new OrderAlreadyCancelled(orderId);
-    }
+  private replay(row: OrderRow, user: AuthUser, body: CreateOrderBody): Order {
+    // 1. Чужий ключ не повертає чуже замовлення
+    if (row.userId !== user.id) throw new IdempotencyKeyReused();
 
-    return this.ordersRepo.markCancelled(orderId);
+    // 2. Той самий ключ з іншим тілом – 422
+    const same =
+      row.eventId === body.eventId &&
+      row.items.length === body.seatIds.length &&
+      [...row.items.map((i) => i.seatId)].sort().join() ===
+        [...body.seatIds].sort().join();
+
+    if (!same) throw new IdempotencyKeyReused();
+
+    return toOrder(row);
   }
 }

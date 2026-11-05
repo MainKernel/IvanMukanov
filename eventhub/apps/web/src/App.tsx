@@ -8,6 +8,8 @@ import { RequireRole } from "./features/auth/RequireRole";
 import { useCurrentUser, useLogout } from "./features/auth/useAuth";
 import { OrganizerEventsPage } from "./features/organizer/OrganizerEventsPage";
 import { OrganizerEventEditPage } from "./features/organizer/OrganizerEventEditPage";
+import { MyOrdersPage } from "./features/orders/MyOrdersPage";
+import { OrderPage } from "./features/orders/OrderPage";
 
 export function App() {
   const { data: user } = useCurrentUser();
@@ -38,6 +40,9 @@ export function App() {
         <nav className="page__auth" aria-label="Обліковий запис">
           {user ? (
             <>
+              <Link to="/orders" className="button button--ghost">
+                Мої замовлення
+              </Link>
               {isOrganizerOrAdmin && (
                 <Link to="/organizer" className="button button--ghost">
                   Кабінет організатора
@@ -72,6 +77,22 @@ export function App() {
           element={
             <RequireAuth>
               <MePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <RequireAuth>
+              <MyOrdersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/orders/:orderId"
+          element={
+            <RequireAuth>
+              <OrderPage />
             </RequireAuth>
           }
         />

@@ -6,6 +6,7 @@ import {
   Module,
 } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
+import { ScheduleModule } from "@nestjs/schedule";
 import { InjectPinoLogger, LoggerModule, PinoLogger } from "nestjs-pino";
 import type { Request, Response } from "express";
 import { HealthModule } from "./health/health.module";
@@ -56,6 +57,7 @@ export class ProblemFilter implements ExceptionFilter {
  */
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         level: env.LOG_LEVEL,

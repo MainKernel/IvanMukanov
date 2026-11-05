@@ -21,7 +21,10 @@ enum Role {
 
 enum OrderStatus {
     PENDING
+    PAID
     CANCELLED
+    EXPIRED
+    REFUNDED
 }
 
 model Venue {
@@ -53,17 +56,22 @@ model Event {
 }
 
 model Seat {
-    id String @id @default(uuid(7)) @db.Uuid
-    eventId String @db.Uuid
-    rowLabel String
-    number Int
-    priceCents Int
-    status SeatStatus @default(FREE)
+    id            String     @id @default(uuid(7)) @db.Uuid
+    eventId       String     @db.Uuid
+    rowLabel      String
+    number        Int
+    priceCents    Int
+    status        SeatStatus @default(FREE)
 
-    event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    // До якого моменту діє резерв.
+    holdExpiresAt DateTime?  @db.Timestamptz(3)
+
+    event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    orderItem OrderItem?
 
     @@unique([eventId, rowLabel, number])
     @@index([eventId, status])
+    @@index([status, holdExpiresAt]) // під запит прибиральника
 }
 
 model User {
@@ -110,18 +118,37 @@ model RefreshToken {
 }
 
 model Order {
-    id         String      @id @default(uuid(7)) @db.Uuid
-    userId     String      @db.Uuid
-    eventId    String      @db.Uuid
-    quantity   Int
-    totalCents Int
-    currency   String      @default("UAH") @db.Char(3)
-    status     OrderStatus @default(PENDING)
-    createdAt  DateTime    @default(now()) @db.Timestamptz(3)
+    id             String      @id @default(uuid(7)) @db.Uuid
+    userId         String      @db.Uuid
+    eventId        String      @db.Uuid
+    status         OrderStatus @default(PENDING)
 
-    user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-    event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    totalCents     Int
+    currency       String      @default("UAH") @db.Char(3)
 
-    @@index([userId])
-    @@index([eventId])
+    holdExpiresAt  DateTime    @db.Timestamptz(3)
+
+    idempotencyKey String?     @unique
+
+    createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+    updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+
+    user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    event Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    items OrderItem[]
+
+    @@index([status, holdExpiresAt])
+    @@index([userId, createdAt])
+}
+
+model OrderItem {
+    id         String @id @default(uuid(7)) @db.Uuid
+    orderId    String @db.Uuid
+    seatId     String @unique @db.Uuid
+    priceCents Int
+
+    order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    seat  Seat  @relation(fields: [seatId], references: [id], onDelete: Cascade)
+
+    @@index([orderId])
 }

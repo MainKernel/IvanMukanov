@@ -107,22 +107,62 @@ verifyField({
   constraints: limitConstraints,
 });
 
-// 2. Перевірка POST /orders -> CreateOrderRequest.quantity
-const quantityConstraints = extractNumericConstraints(
-  "CreateOrderRequest.quantity",
-  /CreateOrderRequest:[\s\S]*?quantity:\s*(\{[^\n}]+\})/,
+// 2. Перевірка POST /orders -> CreateOrderRequest.seatIds (minItems / maxItems / uniqueItems, тиждень 7)
+const seatIdsBlock = yamlText.match(
+  /CreateOrderRequest:[\s\S]*?seatIds:([\s\S]*?)(?=\n\n|\n\s{4}[A-Z])/,
 );
+if (!seatIdsBlock || !seatIdsBlock[1]) {
+  throw new Error(
+    '[Contract Sync] Не вдалося знайти блок "CreateOrderRequest.seatIds" в openapi.yaml',
+  );
+}
+const minItems = Number(seatIdsBlock[1].match(/minItems:\s*(\d+)/)?.[1]);
+const maxItems = Number(seatIdsBlock[1].match(/maxItems:\s*(\d+)/)?.[1]);
+if (Number.isNaN(minItems) || Number.isNaN(maxItems)) {
+  errors.push("[POST /orders (CreateOrderRequest.seatIds)] В openapi.yaml очікуються minItems і maxItems");
+} else {
+  const makeUuid = (idx) =>
+    `018f2c1e-5000-7c3d-9e1f-${String(idx).padStart(12, "0")}`;
+  const checkSeatIds = (ids, shouldPass, desc) => {
+    const ok = createOrderBody.safeParse({
+      eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
+      seatIds: ids,
+    }).success;
+    if (ok !== shouldPass) {
+      errors.push(
+        `[POST /orders (CreateOrderRequest.seatIds)] ${desc} мав бути ${shouldPass ? "прийнятий" : "відхилений"}`,
+      );
+    }
+  };
+  if (minItems > 0) {
+    checkSeatIds(
+      Array.from({ length: minItems - 1 }, (_, i) => makeUuid(i + 1)),
+      false,
+      `масив довжиною ${minItems - 1}`,
+    );
+  }
+  checkSeatIds(
+    Array.from({ length: minItems }, (_, i) => makeUuid(i + 1)),
+    true,
+    `масив довжиною ${minItems}`,
+  );
+  checkSeatIds(
+    Array.from({ length: maxItems }, (_, i) => makeUuid(i + 1)),
+    true,
+    `масив довжиною ${maxItems}`,
+  );
+  checkSeatIds(
+    Array.from({ length: maxItems + 1 }, (_, i) => makeUuid(i + 1)),
+    false,
+    `масив довжиною ${maxItems + 1}`,
+  );
+  checkSeatIds(
+    [makeUuid(1), makeUuid(1)],
+    false,
+    "масив із дублікатами seatIds",
+  );
+}
 
-verifyField({
-  label: "POST /orders (CreateOrderRequest.quantity)",
-  schema: createOrderBody,
-  fieldName: "quantity",
-  baseInput: {
-    eventId: "018f2c1e-4a7b-7c3d-9e1f-2a5b6c7d8e9f",
-    buyerId: "018f2c1e-9999-7c3d-9e1f-2a5b6c7d8e11",
-  },
-  constraints: quantityConstraints,
-});
 
 // 3. Перевірка GET /events -> query.q (рядкові межі minLength / maxLength, ДЗ ЛР №4)
 const qBlock = yamlText.match(
@@ -159,6 +199,6 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `✓ Узгодженість обмежень openapi.yaml ↔ Zod перевірено (limit: ${limitConstraints.minimum}..${limitConstraints.maximum} [default=${limitConstraints.defaultValue}], quantity: ${quantityConstraints.minimum}..${quantityConstraints.maximum}, q: ${qMin}..${qMax} символів)`,
+  `✓ Узгодженість обмежень openapi.yaml ↔ Zod перевірено (limit: ${limitConstraints.minimum}..${limitConstraints.maximum} [default=${limitConstraints.defaultValue}], seatIds: ${minItems}..${maxItems} [unique], q: ${qMin}..${qMax} символів)`,
 );
 

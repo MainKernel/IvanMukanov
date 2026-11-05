@@ -42,22 +42,24 @@ export const eventIdParam = z.object({
 });
 export type EventIdParam = z.infer<typeof eventIdParam>;
 
+// ─── Замовлення (тиждень 7) ──────────────────────────────────────────────
 export const createOrderBody = z.object({
   eventId: uuidLike,
-  buyerId: uuidLike,
-  quantity: z.coerce.number().int().min(1).max(10),
+  seatIds: z
+    .array(uuidLike)
+    .min(1, "Оберіть хоча б одне місце")
+    .max(10, "Не більше десяти місць за раз")
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "Одне й те саме місце вказано двічі",
+    }),
 });
 export type CreateOrderBody = z.infer<typeof createOrderBody>;
 
-export const orderIdParam = z.object({
-  orderId: uuidLike,
-});
+export const orderIdParam = z.object({ orderId: uuidLike });
 export type OrderIdParam = z.infer<typeof orderIdParam>;
 
-export const cancelOrderQuery = z.object({
-  buyerId: uuidLike,
-});
-export type CancelOrderQuery = z.infer<typeof cancelOrderQuery>;
+export const idempotencyKey = z.string().trim().min(8).max(200);
+export type IdempotencyKey = z.infer<typeof idempotencyKey>;
 
 export const favoriteEventIdParam = z.object({
   eventId: uuidLike,
@@ -111,8 +113,6 @@ type OpenApiListEventsQuery = NonNullable<
 type OpenApiEventIdParam = paths["/events/{eventId}"]["get"]["parameters"]["path"];
 type OpenApiCreateOrderBody = components["schemas"]["CreateOrderRequest"];
 type OpenApiOrderIdParam = paths["/orders/{orderId}"]["get"]["parameters"]["path"];
-type OpenApiCancelOrderQuery =
-  paths["/orders/{orderId}"]["delete"]["parameters"]["query"];
 type OpenApiFavoriteEventIdParam =
   paths["/favorites/{eventId}"]["parameters"]["path"];
 type OpenApiRegisterBody = components["schemas"]["RegisterRequest"];
@@ -145,10 +145,6 @@ const _assertCreateOrderBody: AssertStructuralMatch<
 const _assertOrderIdParam: AssertStructuralMatch<
   OrderIdParam,
   OpenApiOrderIdParam
-> = true;
-const _assertCancelOrderQuery: AssertStructuralMatch<
-  CancelOrderQuery,
-  OpenApiCancelOrderQuery
 > = true;
 const _assertFavoriteEventIdParam: AssertStructuralMatch<
   FavoriteEventIdParam,
@@ -183,7 +179,6 @@ void _assertListEventsQuery;
 void _assertEventIdParam;
 void _assertCreateOrderBody;
 void _assertOrderIdParam;
-void _assertCancelOrderQuery;
 void _assertFavoriteEventIdParam;
 void _assertRegisterBody;
 void _assertLoginBody;

@@ -35,6 +35,24 @@ export class OrderNotFound extends DomainError {
   }
 }
 
+export class SeatsUnavailable extends DomainError {
+  constructor(readonly seatIds: string[]) {
+    super("Хтось випередив вас: ці місця вже зайняті");
+  }
+}
+
+export class OrderStateConflict extends DomainError {
+  constructor(readonly current: string) {
+    super("Замовлення вже не очікує оплати");
+  }
+}
+
+export class IdempotencyKeyReused extends DomainError {
+  constructor() {
+    super("Цей ключ ідемпотентності вже використано з іншим запитом");
+  }
+}
+
 export class SeatAlreadyHeld extends DomainError {
   constructor(
     readonly eventId: string,

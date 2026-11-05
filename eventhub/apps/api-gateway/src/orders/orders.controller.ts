@@ -1,49 +1,61 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
   Post,
-  Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
-import type { Order } from "@eventhub/contracts";
+import type { Response } from "express";
+import { idempotencyKey, type Order } from "@eventhub/contracts";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreateOrderBodyDto, OrderIdParamDto } from "./orders.dto";
 import { OrdersService } from "./orders.service";
-import {
-  CancelOrderQueryDto,
-  CreateOrderBodyDto,
-  OrderIdParamDto,
-} from "./orders.dto";
 
 @Controller("orders")
+@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
 
-  @Post()
-  @HttpCode(HttpStatus.CREATED)
-  create(@Body() body: CreateOrderBodyDto): Promise<Order> {
-    return this.orders.create(body);
+  @Get()
+  listMy(@CurrentUser() user: AuthUser): Promise<Order[]> {
+    return this.orders.listMy(user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Post()
+  async create(
+    @CurrentUser() user: AuthUser,
+    @Body() body: CreateOrderBodyDto,
+    @Headers("idempotency-key") rawKey: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<Order> {
+    const parsed = idempotencyKey.safeParse(rawKey);
+    const key = parsed.success ? parsed.data : undefined;
+
+    const { order, replayed } = await this.orders.create(user, body, key);
+    res.status(replayed ? HttpStatus.OK : HttpStatus.CREATED);
+    return order;
+  }
+
   @Get(":orderId")
   getOne(
     @Param() params: OrderIdParamDto,
-    @CurrentUser() current: AuthUser,
+    @CurrentUser() user: AuthUser,
   ): Promise<Order> {
-    return this.orders.getOne(params.orderId, current.id);
+    return this.orders.getOne(params.orderId, user);
   }
 
-  @Delete(":orderId")
+  @Post(":orderId/cancel")
+  @HttpCode(HttpStatus.OK)
   cancel(
     @Param() params: OrderIdParamDto,
-    @Query() query: CancelOrderQueryDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<Order> {
-    return this.orders.cancel(params.orderId, query.buyerId);
+    return this.orders.cancel(params.orderId, user);
   }
 }

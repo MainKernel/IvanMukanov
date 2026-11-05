@@ -9,6 +9,7 @@ import {
   Forbidden,
   ForbiddenOrderAccess,
   GoogleAuthNotConfigured,
+  IdempotencyKeyReused,
   InvalidCredentials,
   InvalidCursor,
   InvalidRefreshToken,
@@ -17,8 +18,10 @@ import {
   OAuthStateMismatch,
   OrderAlreadyCancelled,
   OrderNotFound,
+  OrderStateConflict,
   RequestValidationFailed,
   SeatAlreadyHeld,
+  SeatsUnavailable,
   Unauthenticated,
   UserNotFound,
   VenueNotFound,
@@ -26,6 +29,8 @@ import {
 
 export interface ProblemBody extends Problem {
   errors?: unknown;
+  seatIds?: string[];
+  current?: string;
 }
 
 export function toProblem(err: unknown): ProblemBody {
@@ -80,6 +85,35 @@ export function toProblem(err: unknown): ProblemBody {
       type: "/errors/order-not-found",
       title: "Замовлення не знайдено",
       status: 404,
+      detail: err.message,
+    };
+  }
+
+  if (err instanceof SeatsUnavailable) {
+    return {
+      type: "/errors/seats-unavailable",
+      title: "Місця вже зайняті",
+      status: 409,
+      detail: err.message,
+      seatIds: err.seatIds,
+    };
+  }
+
+  if (err instanceof OrderStateConflict) {
+    return {
+      type: "/errors/order-state",
+      title: "Замовлення вже не очікує оплати",
+      status: 409,
+      detail: err.message,
+      current: err.current,
+    };
+  }
+
+  if (err instanceof IdempotencyKeyReused) {
+    return {
+      type: "/errors/idempotency-key-reused",
+      title: "Ключ ідемпотентності вже використано з іншим запитом",
+      status: 422,
       detail: err.message,
     };
   }
