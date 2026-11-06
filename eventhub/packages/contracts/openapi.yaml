@@ -6,12 +6,30 @@ info:
   description: Портал продажу квитків на події
 
 servers:
-  - url: http://localhost:4010
-    description: Мок-сервер Prism
   - url: http://localhost:3000
     description: Локальний api-gateway
+  - url: http://localhost:4010
+    description: Мок-сервер Prism
 
 paths:
+  /health:
+    get:
+      operationId: checkHealth
+      summary: Перевірка живості сервісу
+      tags: [health]
+      responses:
+        "200":
+          description: Сервіс працює
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, uptime, version]
+                properties:
+                  status:  { type: string, enum: [ok] }
+                  uptime:  { type: number }
+                  version: { type: string }
+
   /events:
     get:
       operationId: listEvents

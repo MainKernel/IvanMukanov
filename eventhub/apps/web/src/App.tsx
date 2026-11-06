@@ -38,6 +38,14 @@ export function App() {
         </div>
 
         <nav className="page__auth" aria-label="Обліковий запис">
+          <a
+            href="http://localhost:3000/docs"
+            target="_blank"
+            rel="noreferrer"
+            className="button button--ghost"
+          >
+            Swagger API
+          </a>
           {user ? (
             <>
               <Link to="/orders" className="button button--ghost">
